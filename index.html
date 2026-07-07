@@ -1949,7 +1949,17 @@ button{touch-action:manipulation}
 
 <script>
 'use strict';
-// ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+//  CONTROLE DE FROTA — REALTEC ENGENHARIA
+//  ------------------------------------------------------------------
+//  PRÉ-REQUISITO DE BANCO: este app depende do script "realtec_frota_setup.sql"
+//  já aplicado no Supabase (SQL Editor). Ele cria/ajusta o schema das tabelas,
+//  as policies de RLS para o papel "anon" e o bucket de Storage "anexos".
+//  Sem ele, cadastros retornam 401 (violates row-level security policy) e os
+//  anexos falham no upload. Segurança do acesso = RLS + (futuramente) login.
+//  A chave abaixo é a "anon" (pública por design do Supabase); a proteção real
+//  vem das policies do banco, não de ocultar esta chave.
+// ══════════════════════════════════════════════════════════════════════════
 // SUPABASE CONFIG
 // ══════════════════════════════════════════
 const SB_URL = 'https://dplitydscohqnliteqby.supabase.co/rest/v1';
