@@ -2,17 +2,18 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#e8f2fb"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <title>Controle Frota Realtec — Realtec Engenharia</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 
 <style>
@@ -1453,16 +1454,19 @@ button{touch-action:manipulation}
           <div class="page-subtitle">Gere relatórios em PDF ou planilhas Excel</div>
         </div>
         <div style="margin-bottom:7px;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700">Relatórios PDF</div>
-        <div class="grid-3" style="margin-bottom:22px">
-          <div class="report-card" onclick="genPDF('os')"><div class="report-icon">📋</div><div class="report-title">Ordem de Serviço</div><div class="report-desc">OS individual conforme ISO 9001</div><button class="btn btn-primary btn-sm">Gerar PDF OS</button></div>
+        <div class="grid-3 report-grid" style="margin-bottom:22px">
+          <div class="report-card" onclick="genPDF('os')"><div class="report-icon">📋</div><div class="report-title">Ordens de Serviço</div><div class="report-desc">Listagem consolidada de todas as OS</div><button class="btn btn-primary btn-sm">Gerar PDF</button></div>
           <div class="report-card" onclick="genPDF('frota')"><div class="report-icon">🚗</div><div class="report-title">Frota Geral</div><div class="report-desc">Todos os veículos com status e KM</div><button class="btn btn-primary btn-sm">Gerar PDF</button></div>
           <div class="report-card" onclick="genPDF('abast')"><div class="report-icon">⛽</div><div class="report-title">Abastecimentos</div><div class="report-desc">Relatório completo de combustível</div><button class="btn btn-primary btn-sm">Gerar PDF</button></div>
           <div class="report-card" onclick="genPDF('manut')"><div class="report-icon">🔧</div><div class="report-title">Manutenções</div><div class="report-desc">Histórico de serviços realizados</div><button class="btn btn-primary btn-sm">Gerar PDF</button></div>
+          <div class="report-card" onclick="genPDF('multas')"><div class="report-icon">🚦</div><div class="report-title">Multas / Infrações</div><div class="report-desc">Infrações com pontos, valores e vencimentos</div><button class="btn btn-primary btn-sm">Gerar PDF</button></div>
         </div>
         <div style="margin-bottom:7px;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700">Planilhas Excel (.xlsx)</div>
-        <div class="grid-3">
+        <div class="grid-3 report-grid">
           <div class="report-card" onclick="genExcel('veiculos')"><div class="report-icon">📊</div><div class="report-title">Veículos — Excel</div><div class="report-desc">Planilha completa da frota</div><button class="btn btn-success btn-sm">Exportar Excel</button></div>
           <div class="report-card" onclick="genExcel('abastecimentos')"><div class="report-icon">📈</div><div class="report-title">Abastecimentos — Excel</div><div class="report-desc">Histórico de combustível</div><button class="btn btn-success btn-sm">Exportar Excel</button></div>
+          <div class="report-card" onclick="genExcel('manutencoes')"><div class="report-icon">🛠️</div><div class="report-title">Manutenções — Excel</div><div class="report-desc">Serviços, fornecedores e custos</div><button class="btn btn-success btn-sm">Exportar Excel</button></div>
+          <div class="report-card" onclick="genExcel('multas')"><div class="report-icon">🚦</div><div class="report-title">Multas — Excel</div><div class="report-desc">Infrações detalhadas por veículo</div><button class="btn btn-success btn-sm">Exportar Excel</button></div>
           <div class="report-card" onclick="genExcel('full')"><div class="report-icon">💼</div><div class="report-title">Backup Completo</div><div class="report-desc">Todos os dados em múltiplas abas</div><button class="btn btn-success btn-sm">Exportar Excel</button></div>
         </div>
       </div>
@@ -1975,17 +1979,17 @@ const headers = {
 async function sbGet(table, query=''){
   // Monta URL sem `&` extra quando query está vazia
   const sep = query ? '&' : '';
-  const r = await fetch(`${SB_URL}/${table}?${query}${sep}order=id.desc`, {headers});
+  const r = await fetch(`${SB_URL}/${tabelaSegura(table)}?${query}${sep}order=id.desc`, {headers});
   if(!r.ok){const t=await r.text();throw new Error(`[${r.status}] ${t.slice(0,120)}`)}
   return r.json();
 }
 async function sbPost(table, data){
-  const r = await fetch(`${SB_URL}/${table}`, {method:'POST', headers, body:JSON.stringify(data)});
+  const r = await fetch(`${SB_URL}/${tabelaSegura(table)}`, {method:'POST', headers, body:JSON.stringify(data)});
   if(!r.ok){const t=await r.text();let msg=t;try{const j=JSON.parse(t);msg=j.message||j.details||t}catch(x){}throw new Error(`[${r.status}] ${msg.slice(0,160)}`)}
   return r.json();
 }
 async function sbPatch(table, id, data){
-  const r = await fetch(`${SB_URL}/${table}?id=eq.${id}`, {method:'PATCH', headers, body:JSON.stringify(data)});
+  const r = await fetch(`${SB_URL}/${tabelaSegura(table)}?id=eq.${idSeguro(id)}`, {method:'PATCH', headers, body:JSON.stringify(data)});
   if(!r.ok){const t=await r.text();let msg=t;try{const j=JSON.parse(t);msg=j.message||j.details||t}catch(x){}throw new Error(`[${r.status}] ${msg.slice(0,160)}`)}
   return r.json();
 }
@@ -2001,7 +2005,7 @@ function detectarColunaFaltante(mensagemErro){
 }
 
 async function sbDelete(table, id){
-  const r = await fetch(`${SB_URL}/${table}?id=eq.${id}`, {method:'DELETE', headers});
+  const r = await fetch(`${SB_URL}/${tabelaSegura(table)}?id=eq.${idSeguro(id)}`, {method:'DELETE', headers});
   if(!r.ok){const t=await r.text();throw new Error(`[${r.status}] ${t.slice(0,120)}`)}
   return true;
 }
@@ -2140,7 +2144,26 @@ function previewAnexoSelecionado(input, previewElId){
 // verificação de erro acontece depois, atualizando a aba já aberta.
 function visualizarAnexo(url, nome){
   if(!url){toast('Este registro não possui anexo.','error');return}
-  const aba=window.open(url,'_blank');
+  // anexo_url vem do banco. Sem esta checagem, um valor "javascript:..."
+  // gravado no campo executaria script na origem do app (XSS armazenado)
+  // no momento em que alguém clicasse no clipe 📎.
+  const urlSegura=urlAnexoSegura(url);
+  if(!urlSegura){
+    toast('Endereço de anexo inválido ou inseguro — este registro não será aberto.','error');
+    console.warn('Anexo bloqueado por esquema de URL não permitido:',String(url).slice(0,80));
+    return;
+  }
+  if(!ehAnexoDoProjeto(urlSegura)){
+    console.warn('Anexo hospedado fora do Storage do projeto:',urlSegura.slice(0,80));
+  }
+  // Proteção contra reverse tabnabbing: sem isso a aba aberta recebe
+  // window.opener e pode redirecionar a aba original para uma página falsa.
+  // Passar 'noopener' como feature faria window.open() devolver null na
+  // maioria dos navegadores — perderíamos o handle usado para fechar a aba
+  // quando o HEAD falha, e o código abaixo acharia que o pop-up foi bloqueado.
+  // Anular .opener obtém a mesma proteção mantendo a referência.
+  const aba=window.open(urlSegura,'_blank');
+  if(aba){try{aba.opener=null}catch(e){}}
   if(!aba){
     // O navegador bloqueou o pop-up mesmo sendo um clique direto (raro, mas possível
     // com configurações restritivas). Avisamos com instrução clara em vez de falhar mudo.
@@ -2148,7 +2171,7 @@ function visualizarAnexo(url, nome){
     return;
   }
   // Verificação de acessibilidade em segundo plano, sem travar a aba já aberta.
-  fetch(url,{method:'HEAD'}).then(r=>{
+  fetch(urlSegura,{method:'HEAD'}).then(r=>{
     if(!r.ok){
       try{aba.close()}catch(e){}
       if(r.status===400||r.status===404){
@@ -2170,17 +2193,36 @@ const cache = {
 async function loadAll(){
   setDbStatus('loading','Carregando...');
   try{
+    // Cada tabela falha isoladamente (uma tabela ausente não pode derrubar o app),
+    // mas registramos quais falharam: antes, o `.catch(()=>[])` engolia TUDO e o
+    // status exibia "Supabase Conectado" mesmo com 100% das requisições falhando.
+    const falhas=[];
+    const pega=(t)=>sbGet(t).catch(e=>{falhas.push(t+': '+e.message);return null});
     const [v,m,o,a,mn,ck,vg,mu,os_list] = await Promise.all([
-      sbGet('veiculos').catch(()=>[]),
-      sbGet('motoristas').catch(()=>[]),
-      sbGet('obras').catch(()=>[]),
-      sbGet('abastecimentos').catch(()=>[]),
-      sbGet('manutencoes').catch(()=>[]),
-      sbGet('checklists').catch(()=>[]),
-      sbGet('viagens').catch(()=>[]),
-      sbGet('multas').catch(()=>[]),
-      sbGet('ordens_servico').catch(()=>[])
+      pega('veiculos'),
+      pega('motoristas'),
+      pega('obras'),
+      pega('abastecimentos'),
+      pega('manutencoes'),
+      pega('checklists'),
+      pega('viagens'),
+      pega('multas'),
+      pega('ordens_servico')
     ]);
+    if(falhas.length===9){
+      // Nenhuma tabela respondeu — é falha de conexão/credencial, não base vazia.
+      throw new Error(falhas[0]);
+    }
+    if(falhas.length){
+      console.warn('Tabelas que não responderam:',falhas);
+      toast(`${falhas.length} tabela(s) não responderam. Verifique o schema/RLS no Supabase.`,'warning');
+    }
+    // Contagens BRUTAS (antes de filtrar exclusões lógicas). O seed automático
+    // se baseia nelas: usar o cache já filtrado fazia registros excluídos pelo
+    // usuário voltarem do zero no próximo carregamento da página.
+    cache._brutos={
+      veiculos:(v||[]).length,multas:(mu||[]).length,manutencoes:(mn||[]).length
+    };
     cache.veiculos=v||[];cache.motoristas=m||[];cache.obras=o||[];
     cache.abastecimentos=a||[];cache.manutencoes=mn||[];
     cache.checklists=ck||[];cache.viagens=vg||[];cache.multas=mu||[];cache.ordens=os_list||[];
@@ -2233,6 +2275,12 @@ function normIds(r){const o={...r};['id','veiculo_id','motorista_id','obra_id'].
 function h(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 // hAttr: escape para uso dentro de atributos com aspas simples (ex.: onclick="fn('${hAttr(nome)}')").
 // Escapa também apóstrofos e barras — necessário quando o valor pode conter nome de arquivo com aspas.
+// IDs interpolados em atributos (onclick="fn('${id}')", value="${id}").
+// Um apóstrofo no valor escaparia do atributo e viraria código executável.
+function idAttr(v){
+  const n=String(v==null?'':v);
+  return /^[A-Za-z0-9_-]{1,64}$/.test(n)?n:'';
+}
 function hAttr(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 // Debounce genérico — evita re-render a cada tecla quando o usuário digita rápido.
@@ -2271,8 +2319,18 @@ function fmtDT(iso){if(!iso)return '—';const d=new Date(iso);if(isNaN(d))retur
 // Versão segura para comparações de data (vencidas, alertas) — meio-dia local evita virar o dia ao comparar.
 function dateSafe(iso){if(!iso)return null;const m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12,0,0);const d=new Date(iso);return isNaN(d)?null:d}
 function nowISO(){return new Date().toISOString()}
-function today(){return new Date().toISOString().slice(0,10)}
-function nowLocal(){const n=new Date();return n.toISOString().slice(0,16)}
+// today() e nowLocal() alimentam inputs date/datetime-local, que são sempre
+// interpretados em horário LOCAL pelo navegador. Usar toISOString() (UTC)
+// fazia o formulário abrir com o dia seguinte após as 21h em Brasília e com
+// a hora adiantada em 3h no campo de abastecimento.
+function today(){
+  const n=new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+function nowLocal(){
+  const n=new Date();
+  return `${today()}T${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
 function fmt$(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 // Normaliza variações textuais da mesma infração vindas de registros antigos/importados
 // (ex.: "NÃO INDICAÇÃO DE CONDUTOR" vs "NÃO IDENTIFICAÇÃO DE CONDUTOR" são a mesma infração).
@@ -2284,13 +2342,152 @@ function normalizaDescricaoInfracao(desc){
 }
 function fmtKM(n){return Number(n||0).toLocaleString('pt-BR')+' km'}
 
+// ══════════════════════════════════════════════════════════════════════════
+// CAMADA DE SEGURANÇA
+// ──────────────────────────────────────────────────────────────────────────
+// Complementa h()/hAttr(). Aqui ficam as defesas que dizem respeito a URLs,
+// identificadores usados em query string e checagem de propriedades — pontos
+// que o escape de HTML sozinho não cobre.
+// ══════════════════════════════════════════════════════════════════════════
+
+// Tabelas que o app pode acessar. Impede que um valor inesperado vire um
+// caminho arbitrário na REST API (defesa em profundidade: hoje todas as
+// chamadas passam literais, mas isso trava qualquer regressão futura).
+const TABELAS_PERMITIDAS=new Set(['veiculos','motoristas','obras','abastecimentos',
+  'manutencoes','checklists','viagens','multas','ordens_servico','historico_alteracoes']);
+function tabelaSegura(t){
+  if(!TABELAS_PERMITIDAS.has(t))throw new Error(`Tabela não permitida: ${t}`);
+  return t;
+}
+// IDs entram na query string (?id=eq.${id}). Sem validação, um valor com
+// vírgula ou operador do PostgREST ("1,status.eq.x") alteraria o filtro e
+// atingiria linhas que não eram o alvo — inclusive num DELETE.
+function idSeguro(id){
+  const n=String(id==null?'':id).trim();
+  if(!/^[A-Za-z0-9_-]{1,64}$/.test(n))throw new Error(`Identificador inválido: ${n.slice(0,40)}`);
+  return encodeURIComponent(n);
+}
+// Anexos são abertos com window.open(url). O valor vem do banco, então uma
+// URL "javascript:..." gravada em anexo_url executaria script na origem do
+// app (XSS armazenado). Só liberamos http/https e, por padrão, apenas o
+// Storage do próprio projeto.
+function urlAnexoSegura(url){
+  let u;
+  try{u=new URL(String(url),window.location.href)}catch(e){return null}
+  if(u.protocol!=='http:'&&u.protocol!=='https:')return null;
+  return u.href;
+}
+function ehAnexoDoProjeto(href){
+  try{return new URL(href).origin===new URL(SB_STORAGE_URL).origin}catch(e){return false}
+}
+// `chave in objeto` percorre a cadeia de protótipos: uma mensagem de erro
+// contendo "__proto__" ou "constructor" daria falso positivo e removeria a
+// chave errada do payload. Só interessa propriedade própria.
+function temPropriaChave(obj,chave){
+  return Object.prototype.hasOwnProperty.call(obj,chave);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// VALIDAÇÃO DE ENTRADA — impede registros inconsistentes
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── Placa: aceita padrão antigo (ABC1234) e Mercosul (ABC1D23) ──
+function normalizaPlaca(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
+function ehPlacaValida(v){
+  const p=normalizaPlaca(v);
+  return /^[A-Z]{3}\d{4}$/.test(p)||/^[A-Z]{3}\d[A-Z]\d{2}$/.test(p);
+}
+// ── CPF: dígitos verificadores ──
+function soDigitos(v){return String(v||'').replace(/\D/g,'')}
+function ehCPFValido(v){
+  const c=soDigitos(v);
+  if(c.length!==11||/^(\d)\1{10}$/.test(c))return false;
+  const dv=(base,peso)=>{
+    let s=0;for(let i=0;i<base;i++)s+=Number(c[i])*(peso-i);
+    const r=(s*10)%11;return r===10?0:r;
+  };
+  return dv(9,10)===Number(c[9])&&dv(10,11)===Number(c[10]);
+}
+// ── CNPJ: dígitos verificadores ──
+function ehCNPJValido(v){
+  const c=soDigitos(v);
+  if(c.length!==14||/^(\d)\1{13}$/.test(c))return false;
+  const dv=(base)=>{
+    let peso=base-7,s=0;
+    for(let i=0;i<base;i++){s+=Number(c[i])*peso;peso=(--peso<2)?9:peso}
+    const r=s%11;return r<2?0:11-r;
+  };
+  return dv(12)===Number(c[12])&&dv(13)===Number(c[13]);
+}
+// Aceita CPF ou CNPJ no mesmo campo (fornecedor pode ser PJ ou PF).
+function ehCPFouCNPJValido(v){
+  const c=soDigitos(v);
+  if(c.length===11)return ehCPFValido(c);
+  if(c.length===14)return ehCNPJValido(c);
+  return false;
+}
+// ── Datas ──
+function ehDataValida(v){
+  if(!v)return true; // vazio é tratado pela regra de obrigatoriedade
+  const d=dateSafe(v);
+  return !!d&&!isNaN(d);
+}
+function ehDataFutura(v){
+  const d=dateSafe(v);
+  if(!d)return false;
+  const hoje=dateSafe(today());
+  return d>hoje;
+}
+function diasEntre(a,b){
+  const d1=dateSafe(a),d2=dateSafe(b);
+  if(!d1||!d2)return null;
+  return Math.round((d2-d1)/86400000);
+}
+// ── Números ──
+function ehNumeroNaoNegativo(v){
+  if(v===''||v==null)return true;
+  const n=Number(v);
+  return Number.isFinite(n)&&n>=0;
+}
+function ehInteiroEntre(v,min,max){
+  if(v===''||v==null)return true;
+  const n=Number(v);
+  return Number.isFinite(n)&&n>=min&&n<=max;
+}
+// ── Duplicidade ──
+// Compara ignorando maiúsculas/espaços e ignora o próprio registro em edição.
+function existeDuplicado(lista,campo,valor,idAtual,normaliza){
+  const norm=normaliza||(v=>String(v||'').trim().toUpperCase());
+  const alvo=norm(valor);
+  if(!alvo)return false;
+  return (lista||[]).some(r=>norm(r[campo])===alvo&&String(r.id)!==String(idAtual||''));
+}
+// Para documentos que podem estar gravados com ou sem máscara (CPF, CNH,
+// RENAVAM): compara sempre pelos dígitos.
+function existeDuplicadoDoc(lista,campo,valor,idAtual){
+  return existeDuplicado(lista,campo,valor,idAtual,soDigitos);
+}
+
+// Executa as regras em ordem e devolve a primeira mensagem de erro (ou null).
+// Cada regra é [condiçãoDeErro, mensagem]. Mantém os save*() legíveis.
+function primeiroErro(regras){
+  for(const [falhou,msg] of regras){ if(falhou)return msg; }
+  return null;
+}
+// Aplica as regras; se houver erro, avisa o usuário e devolve false.
+function validar(regras){
+  const erro=primeiroErro(regras);
+  if(erro){toast(erro,'error');return false}
+  return true;
+}
+
 // ══════════════════════════════════════════
 // SPLASH → APP
 // ══════════════════════════════════════════
 // ── FILE:// CORS NOTE ──
-// The "Unsafe attempt" message in console is a Chrome cosmetic warning
-// about file:// same-origin policy. It does NOT block Supabase HTTPS requests.
-// For best experience, serve this file via HTTP (see #file-warning banner).
+// O aviso "Unsafe attempt" no console é cosmético do Chrome (política de
+// mesma origem do file://) e NÃO bloqueia as requisições HTTPS ao Supabase.
+// Ainda assim, sirva o arquivo via HTTP/HTTPS sempre que possível.
 
 window.addEventListener('DOMContentLoaded', async ()=>{
   // Animate loading messages
@@ -2367,9 +2564,18 @@ async function executarUmaVez(chave, btnEl, fn){
 
 function toast(msg,type='info'){
   const wrap=document.getElementById('toast-wrap');
+  if(!wrap){console.log('[toast]',type,msg);return}
   const t=document.createElement('div');
   t.className=`toast ${type}`;
-  t.innerHTML=`<div class="toast-icon">${ICONS[type]||'i'}</div><div>${msg}</div>`;
+  // Antes usava innerHTML: as mensagens incluem e.message vindo do PostgREST
+  // (que ecoa o payload enviado) e nomes de arquivo escolhidos pelo usuário,
+  // então qualquer "<" no conteúdo virava HTML executável. Montamos por nó.
+  const ico=document.createElement('div');
+  ico.className='toast-icon';
+  ico.textContent=ICONS[type]||'i';
+  const body=document.createElement('div');
+  body.textContent=String(msg==null?'':msg);
+  t.appendChild(ico);t.appendChild(body);
   wrap.appendChild(t);
   setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(10px)';t.style.transition='all .3s';setTimeout(()=>t.remove(),300)},3200);
 }
@@ -2394,7 +2600,7 @@ const sectionMeta={
   dashboard:'Dashboard',alerts:'Alertas da Frota',veiculos:'Veículos',
   abastecimentos:'Abastecimentos',manutencoes:'Manutenções',checklist:'Checklist Diário',
   viagens:'Viagens / KM',motoristas:'Motoristas',obras:'Obras / Projetos',
-  multas:'Multas / Infrações',reports:'Relatórios'
+  multas:'Multas / Infrações',ordemservico:'Ordem de Serviço',reports:'Relatórios'
 };
 const renders={
   dashboard:renderDash,alerts:renderAlerts,veiculos:renderVeiculos,
@@ -2435,7 +2641,8 @@ function fabAction(){
     viagens:openViagemModal,
     motoristas:openMotorModal,
     obras:openObraModal,
-    multas:openMultaModal
+    multas:openMultaModal,
+    ordemservico:openOSModal
   };
   if(actions[id]) actions[id]();
   else nav('veiculos');
@@ -2552,23 +2759,36 @@ function renderDash(){
   if(km2)km2.textContent=multasPend;
   document.getElementById('k-disp').textContent=veics.filter(v=>v.status==='ativo').length;
   document.getElementById('k-manut').textContent=veics.filter(v=>v.status==='manutencao').length;
+  // dateSafe() em vez de new Date(): para datas "puras" (YYYY-MM-DD) o JS
+  // interpreta como UTC meia-noite, e em UTC-3 getMonth() devolvia o mês
+  // anterior — todo abastecimento do dia 1º caía no mês errado.
   const abastMes=cache.abastecimentos.filter(a=>{
-    const d=new Date(a.data_hora||a.data);
-    return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
+    const d=dateSafe(a.data_hora||a.data);
+    return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });
   document.getElementById('k-abast').textContent=abastMes.length;
+
+  // Se o CDN do Chart.js não carregou, os KPIs e as listas continuam
+  // funcionando — antes, o `new Chart(...)` lançava ReferenceError e
+  // abortava renderDash() no meio, deixando o dashboard pela metade.
+  const temChart=(typeof Chart!=='undefined');
+  if(!temChart)console.warn('Chart.js indisponível: gráficos do dashboard não serão exibidos.');
 
   // Chart abastecimentos 30d
   destroyChart('abast');
   const labels30=[],data30=[];
+  // Chave do dia montada em horário LOCAL. Com toISOString() (UTC), a partir
+  // das 21h em Brasília o "hoje" do gráfico virava o dia seguinte e as barras
+  // saíam deslocadas em relação aos lançamentos.
+  const chaveLocal=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   for(let i=29;i>=0;i--){
     const d=new Date();d.setDate(d.getDate()-i);
-    const key=d.toISOString().slice(0,10);
+    const key=chaveLocal(d);
     labels30.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
     data30.push(cache.abastecimentos.filter(a=>(a.data_hora||a.data||'').startsWith(key)).length);
   }
   const ctx1=document.getElementById('ch-abast');
-  if(ctx1){
+  if(ctx1&&temChart){
     charts['abast']=new Chart(ctx1,{
       type:'bar',
       data:{labels:labels30,datasets:[{label:'Abastecimentos',data:data30,backgroundColor:'rgba(33,150,243,.5)',borderColor:'#2196f3',borderWidth:1.5,borderRadius:3}]},
@@ -2585,7 +2805,7 @@ function renderDash(){
     },0);
   });
   const ctx2=document.getElementById('ch-km');
-  if(ctx2){
+  if(ctx2&&temChart){
     charts['km']=new Chart(ctx2,{
       type:'bar',
       data:{
@@ -2604,7 +2824,7 @@ function renderDash(){
     combMap[c]=(combMap[c]||0)+(Number(a.litros)||0);
   });
   const ctx3=document.getElementById('ch-comb');
-  if(ctx3&&Object.keys(combMap).length>0){
+  if(ctx3&&temChart&&Object.keys(combMap).length>0){
     charts['comb']=new Chart(ctx3,{
       type:'doughnut',
       data:{
@@ -2715,10 +2935,10 @@ function renderVeiculos(){
       <td>${h(v.ano||'—')}</td>
       <td>${v.km_atual?fmtKM(v.km_atual):'—'}</td>
       <td>${v.km_proxima_revisao?fmtKM(v.km_proxima_revisao):'—'}</td>
-      <td><span class="badge ${stMap[v.status]||'badge-gray'}">${stLabel[v.status]||v.status||'—'}</span></td>
+      <td><span class="badge ${stMap[v.status]||'badge-gray'}">${stLabel[v.status]||h(v.status||'')||'—'}</span></td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editVeic('${v.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delVeic('${v.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editVeic('${idAttr(v.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delVeic('${idAttr(v.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`).join('');
 }
@@ -2758,12 +2978,30 @@ function openVeicModal(v=null){
 function closeVeicModal(){document.getElementById('m-veic').classList.remove('open')}
 function editVeic(id){const v=cache.veiculos.find(x=>x.id==id);if(v)openVeicModal(v)}
 async function saveVeic(){
-  const placa=document.getElementById('vf-placa').value.trim().toUpperCase();
+  const placa=normalizaPlaca(document.getElementById('vf-placa').value);
   const modelo=document.getElementById('vf-modelo').value.trim();
   const tipo=document.getElementById('vf-tipo').value;
-  if(!placa){toast('Placa é obrigatória','error');return}
-  if(!modelo){toast('Modelo é obrigatório','error');return}
-  if(!tipo){toast('Tipo do veículo é obrigatório','error');return}
+  const ano=document.getElementById('vf-ano').value;
+  const km=document.getElementById('vf-km').value;
+  const kmRev=document.getElementById('vf-kmrev').value;
+  const renavam=soDigitos(document.getElementById('vf-renavam').value);
+  const chassis=document.getElementById('vf-chassis').value.trim();
+  const anoLimite=new Date().getFullYear()+1;
+  if(!validar([
+    [!placa,'Placa é obrigatória'],
+    [!ehPlacaValida(placa),'Placa inválida. Use o padrão ABC1234 ou Mercosul ABC1D23.'],
+    [existeDuplicado(cache.veiculos,'placa',placa,veicEditId,normalizaPlaca),`A placa ${placa} já está cadastrada em outro veículo.`],
+    [!modelo,'Modelo é obrigatório'],
+    [!tipo,'Tipo do veículo é obrigatório'],
+    [ano&&!ehInteiroEntre(ano,1950,anoLimite),`Ano inválido. Informe um valor entre 1950 e ${anoLimite}.`],
+    [!ehNumeroNaoNegativo(km),'A quilometragem atual não pode ser negativa.'],
+    [!ehNumeroNaoNegativo(kmRev),'A quilometragem da próxima revisão não pode ser negativa.'],
+    [Number(kmRev)>0&&Number(km)>0&&Number(kmRev)<=Number(km),'A próxima revisão deve ser maior que a quilometragem atual.'],
+    [renavam&&!/^\d{9,11}$/.test(renavam),'RENAVAM inválido: deve conter de 9 a 11 dígitos.'],
+    [chassis&&chassis.replace(/[^A-Za-z0-9]/g,'').length!==17,'Chassi inválido: deve conter 17 caracteres.'],
+    [!ehDataValida(document.getElementById('vf-ipva').value),'Data de vencimento do IPVA inválida.'],
+    [!ehDataValida(document.getElementById('vf-seguro').value),'Data de vencimento do seguro inválida.']
+  ]))return;
   const data={
     placa,modelo,
     tipo,
@@ -2819,7 +3057,7 @@ function populateVeicSelect(selId){
   if(!sel)return;
   const cur=sel.value;
   sel.innerHTML='<option value="">Selecione o veículo...</option>'+
-    cache.veiculos.map(v=>`<option value="${v.id}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
+    cache.veiculos.map(v=>`<option value="${idAttr(v.id)}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
   if(cur) sel.value=cur;
 }
 function populateMotorSelect(selId, emptyLabel='— Sem motorista —', valorAtual=null){
@@ -2837,7 +3075,7 @@ function populateMotorSelect(selId, emptyLabel='— Sem motorista —', valorAtu
     }
   }
   sel.innerHTML=`<option value="">${emptyLabel}</option>`+
-    lista.map(m=>`<option value="${m.id}">${h(m.nome)}${m.status!=='ativo'?' (inativo)':''}</option>`).join('');
+    lista.map(m=>`<option value="${idAttr(m.id)}">${h(m.nome)}${m.status!=='ativo'?' (inativo)':''}</option>`).join('');
   if(cur) sel.value=cur;
 }
 function populateObraSelect(selId, valorAtual=null){
@@ -2853,7 +3091,7 @@ function populateObraSelect(selId, valorAtual=null){
     }
   }
   sel.innerHTML='<option value="">— Sem obra —</option>'+
-    lista.map(o=>`<option value="${o.id}">${h(o.codigo||'')} ${h(o.nome)}${o.status!=='ativa'?' ('+o.status+')':''}</option>`).join('');
+    lista.map(o=>`<option value="${idAttr(o.id)}">${h(o.codigo||'')} ${h(o.nome)}${o.status!=='ativa'?' ('+h(o.status||'')+')':''}</option>`).join('');
   if(cur) sel.value=cur;
 }
 
@@ -2881,13 +3119,13 @@ function renderAbast(){
       <td><strong style="color:var(--text-primary)">${veic?h(veic.placa):'—'}</strong></td>
       <td>${veic?h(veic.modelo):'—'}</td>
       <td>${motor?h(motor.nome):'—'}</td>
-      <td>${a.litros||'—'} L</td>
+      <td>${h(a.litros||'—')} L</td>
       <td><span class="badge badge-blue">${h(a.combustivel||'')}</span></td>
       <td>${a.km_abastecimento?fmtKM(a.km_abastecimento):'—'}</td>
       <td>${a.valor?fmt$(a.valor):'—'}</td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editAbast('${a.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delAbast('${a.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editAbast('${idAttr(a.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delAbast('${idAttr(a.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -2926,7 +3164,24 @@ function closeAbastModal(){document.getElementById('m-abast').classList.remove('
 async function saveAbast(){
   const veicId=document.getElementById('ab-veic').value;
   const litros=document.getElementById('ab-litros').value;
-  if(!veicId||!litros){toast('Veículo e litros são obrigatórios','error');return}
+  const valor=document.getElementById('ab-valor').value;
+  const kmAb=document.getElementById('ab-km').value;
+  const dataHora=document.getElementById('ab-data').value;
+  const veicSel=cache.veiculos.find(v=>v.id==veicId);
+  if(!validar([
+    [!veicId,'Selecione o veículo'],
+    [!litros,'Informe a quantidade de litros'],
+    [Number(litros)<=0,'A quantidade de litros deve ser maior que zero.'],
+    [Number(litros)>1000,'Quantidade de litros fora do razoável (acima de 1.000 L). Confira o valor.'],
+    [!ehNumeroNaoNegativo(valor),'O valor pago não pode ser negativo.'],
+    [!ehNumeroNaoNegativo(kmAb),'A quilometragem não pode ser negativa.'],
+    [!ehDataValida(dataHora),'Data/hora do abastecimento inválida.'],
+    [ehDataFutura(dataHora),'A data do abastecimento não pode estar no futuro.'],
+    // KM abaixo do odômetro atual indica troca de campos ou digitação errada:
+    // é o erro que mais contamina o cálculo de consumo nos relatórios.
+    [Number(kmAb)>0&&veicSel&&Number(kmAb)<Number(veicSel.km_atual||0),
+     `A quilometragem informada (${Number(kmAb).toLocaleString('pt-BR')}) é menor que a atual do veículo (${Number(veicSel?veicSel.km_atual:0).toLocaleString('pt-BR')}). Confira o lançamento.`]
+  ]))return;
   const data={
     veiculo_id:veicId,
     motorista_id:document.getElementById('ab-motor').value||null,
@@ -3001,8 +3256,11 @@ function renderManut(){
       <td title="${h(m.fornecedor||'')}">${h(servico)}</td>
       <td>${m.km?fmtKM(m.km):'—'}</td>
       <td>${custo?fmt$(custo):'—'}</td>
-      <td><span class="badge ${statusNorm==='aberto'?'badge-aberto':'badge-encerrado'}">${statusNorm}</span></td>
+      <td><span class="badge ${statusNorm==='aberto'?'badge-aberto':'badge-encerrado'}">${h(statusNorm)}</span></td>
       <td style="text-align:center">${temAnexo?`<button onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" title="${h(m.anexo_nome||'Ver anexo')}" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--accent)">📎</button>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn e" onclick="editManut('${idAttr(m.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delManut('${idAttr(m.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3049,7 +3307,22 @@ function editManut(id){const m=cache.manutencoes.find(x=>x.id==id);if(m)openManu
 async function saveManut(){
   const veicId=document.getElementById('mn-veic').value;
   const servico=document.getElementById('mn-servico').value.trim();
-  if(!veicId||!servico){toast('Veículo e serviço são obrigatórios','error');return}
+  const dataServ=document.getElementById('mn-data').value;
+  const custoMn=document.getElementById('mn-custo').value;
+  const kmMn=document.getElementById('mn-km').value;
+  const proxKm=document.getElementById('mn-proxkm').value;
+  if(!validar([
+    [!veicId,'Selecione o veículo'],
+    [!servico,'Descreva o serviço realizado'],
+    [!ehDataValida(dataServ),'Data da manutenção inválida.'],
+    // Manutenção pode ser agendada, então futuro é permitido — mas só dentro
+    // de um horizonte razoável, o que barra erros de digitação no ano.
+    [dataServ&&diasEntre(today(),dataServ)>365,'Data da manutenção muito distante no futuro. Confira o ano digitado.'],
+    [!ehNumeroNaoNegativo(custoMn),'O custo não pode ser negativo.'],
+    [!ehNumeroNaoNegativo(kmMn),'A quilometragem não pode ser negativa.'],
+    [!ehNumeroNaoNegativo(proxKm),'A quilometragem da próxima revisão não pode ser negativa.'],
+    [Number(proxKm)>0&&Number(kmMn)>0&&Number(proxKm)<=Number(kmMn),'A próxima revisão deve ser maior que a quilometragem do serviço.']
+  ]))return;
   // Anexo é tratado separadamente do registro: uma falha no upload (bucket ausente,
   // arquivo grande, sem internet) NUNCA pode impedir o salvamento da manutenção.
   let anexoUrl=document.getElementById('mn-anexo-url').value||null;
@@ -3087,7 +3360,7 @@ async function saveManut(){
     // Detecta coluna inexistente de forma genérica (em vez de procurar só
     // "anexo_url"/"anexo_nome" — isso cobria só um caso e mascarava outros erros).
     const colunaFaltante=detectarColunaFaltante(e.message);
-    if(colunaFaltante&&colunaFaltante in data){
+    if(colunaFaltante&&temPropriaChave(data,colunaFaltante)){
       try{
         const dataSemColuna={...data};
         delete dataSemColuna[colunaFaltante];
@@ -3172,8 +3445,8 @@ function renderCheck(){
       <td>${ck.km_atual?fmtKM(ck.km_atual):'—'}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${h(ck.observacoes||'')}">${h(ck.observacoes||'—')}</td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editCheck('${ck.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delCheck('${ck.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editCheck('${idAttr(ck.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delCheck('${idAttr(ck.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3216,7 +3489,14 @@ async function delCheck(id){
 function closeCheckModal(){document.getElementById('m-check').classList.remove('open')}
 async function saveCheck(){
   const veicId=document.getElementById('ck-veic').value;
-  if(!veicId){toast('Selecione o veículo','error');return}
+  const dataCk=document.getElementById('ck-data').value;
+  const kmCk=document.getElementById('ck-km').value;
+  if(!validar([
+    [!veicId,'Selecione o veículo'],
+    [!ehDataValida(dataCk),'Data do checklist inválida.'],
+    [ehDataFutura(dataCk),'A data do checklist não pode estar no futuro.'],
+    [!ehNumeroNaoNegativo(kmCk),'A quilometragem não pode ser negativa.']
+  ]))return;
   const data={
     veiculo_id:veicId,
     motorista_id:document.getElementById('ck-motor').value||null,
@@ -3277,12 +3557,12 @@ function renderViagens(){
       <td>${motor?h(motor.nome):'—'}</td>
       <td>${fmtKM(vg.km_saida)}</td>
       <td>${vg.km_chegada?fmtKM(vg.km_chegada):'Em viagem'}</td>
-      <td>${kmInconsistente?`<span style="color:var(--danger)" title="KM de chegada (${vg.km_chegada}) é menor que o de saída (${vg.km_saida}). Verifique o lançamento.">⚠ Inconsistente</span>`:(kmRod!==null?`<strong style="color:var(--success)">${fmtKM(kmRod)}</strong>`:'—')}</td>
+      <td>${kmInconsistente?`<span style="color:var(--danger)" title="KM de chegada (${h(vg.km_chegada)}) é menor que o de saída (${h(vg.km_saida)}). Verifique o lançamento.">⚠ Inconsistente</span>`:(kmRod!==null?`<strong style="color:var(--success)">${fmtKM(kmRod)}</strong>`:'—')}</td>
       <td>${h(vg.destino||'—')}</td>
       <td>${obra?h(obra.nome):'—'}</td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editViagem('${vg.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delViagem('${vg.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editViagem('${idAttr(vg.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delViagem('${idAttr(vg.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3317,12 +3597,20 @@ async function saveViagem(){
   const kmSaida=document.getElementById('vg-kmsaida').value;
   if(!veicId||!kmSaida){toast('Veículo e KM de saída são obrigatórios','error');return}
   const kmCheg=document.getElementById('vg-kmcheg').value;
-  // Validação de integridade: KM de chegada não pode ser menor que o de saída
-  // (erro comum de digitação que gerava "KM rodado" negativo nos relatórios).
-  if(kmCheg&&Number(kmCheg)<Number(kmSaida)){
-    toast(`KM de chegada (${kmCheg}) não pode ser menor que o de saída (${kmSaida}). Verifique os valores.`,'error');
-    return;
-  }
+  const dataVg=document.getElementById('vg-data').value;
+  if(!validar([
+    [!veicId,'Selecione o veículo'],
+    [!kmSaida,'Informe o KM de saída'],
+    [!ehNumeroNaoNegativo(kmSaida),'O KM de saída não pode ser negativo.'],
+    [!ehNumeroNaoNegativo(kmCheg),'O KM de chegada não pode ser negativo.'],
+    // Erro comum de digitação: gerava "KM rodado" negativo nos relatórios.
+    [kmCheg!==''&&Number(kmCheg)<Number(kmSaida),
+     `KM de chegada (${kmCheg}) não pode ser menor que o de saída (${kmSaida}). Verifique os valores.`],
+    [kmCheg!==''&&Number(kmCheg)-Number(kmSaida)>5000,
+     'Trecho acima de 5.000 km em uma única viagem. Confira os valores digitados.'],
+    [!ehDataValida(dataVg),'Data da viagem inválida.'],
+    [ehDataFutura(dataVg),'A data da viagem não pode estar no futuro.']
+  ]))return;
   const data={
     veiculo_id:veicId,
     motorista_id:document.getElementById('vg-motor').value||null,
@@ -3388,10 +3676,10 @@ function renderMotoristas(){
       <td><span class="badge badge-blue">${h(m.categoria_cnh||'—')}</span></td>
       <td><span class="badge ${cnhBadge}">${venc?fmtDate(m.validade_cnh):'—'}</span></td>
       <td>${h(m.setor||'—')}</td>
-      <td><span class="badge ${m.status==='ativo'?'badge-ativo':'badge-inativo'}">${m.status||'—'}</span></td>
+      <td><span class="badge ${m.status==='ativo'?'badge-ativo':'badge-inativo'}">${h(m.status||'—')}</span></td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editMotor('${m.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delMotor('${m.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editMotor('${idAttr(m.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delMotor('${idAttr(m.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3424,7 +3712,27 @@ function closeMotorModal(){document.getElementById('m-motor').classList.remove('
 function editMotor(id){const m=cache.motoristas.find(x=>x.id==id);if(m)openMotorModal(m)}
 async function saveMotor(){
   const nome=document.getElementById('mt-nome').value.trim();
-  if(!nome){toast('Nome é obrigatório','error');return}
+  const cpf=document.getElementById('mt-cpf').value;
+  const matricula=document.getElementById('mt-mat').value.trim();
+  const cnh=soDigitos(document.getElementById('mt-cnh').value);
+  const validade=document.getElementById('mt-valid').value;
+  const tel=soDigitos(document.getElementById('mt-tel').value);
+  if(!validar([
+    [!nome,'Nome é obrigatório'],
+    [nome.length<3,'Nome muito curto: informe o nome completo do motorista.'],
+    [soDigitos(cpf)&&!ehCPFValido(cpf),'CPF inválido: confira os dígitos.'],
+    [existeDuplicadoDoc(cache.motoristas,'cpf',cpf,motorEditId),'Já existe um motorista cadastrado com este CPF.'],
+    [existeDuplicado(cache.motoristas,'matricula',matricula,motorEditId),`A matrícula ${matricula} já está em uso.`],
+    [cnh&&!/^\d{9,11}$/.test(cnh),'Número da CNH inválido: deve conter de 9 a 11 dígitos.'],
+    [existeDuplicadoDoc(cache.motoristas,'numero_cnh',cnh,motorEditId),'Já existe um motorista cadastrado com esta CNH.'],
+    [tel&&!/^\d{10,11}$/.test(tel),'Telefone inválido: informe DDD + número (10 ou 11 dígitos).'],
+    [!ehDataValida(validade),'Data de validade da CNH inválida.'],
+    [validade&&diasEntre(today(),validade)>3650,'Validade da CNH muito distante: confira a data digitada.']
+  ]))return;
+  // Vencida não bloqueia (pode ser um cadastro de regularização), mas avisa.
+  if(validade&&ehDataFutura(validade)===false&&diasEntre(validade,today())>0){
+    toast('Atenção: a CNH informada está vencida. O cadastro será salvo mesmo assim.','warning');
+  }
   const data={
     matricula:document.getElementById('mt-mat').value,
     nome,
@@ -3478,8 +3786,8 @@ function renderObras(){
       <td><span class="badge ${stMap[o.status]||'badge-gray'}">${h(o.status||'—')}</span></td>
       <td>${viagens}</td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editObra('${o.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delObra('${o.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editObra('${idAttr(o.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delObra('${idAttr(o.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3507,7 +3815,12 @@ function closeObraModal(){document.getElementById('m-obra').classList.remove('op
 function editObra(id){const o=cache.obras.find(x=>x.id==id);if(o)openObraModal(o)}
 async function saveObra(){
   const nome=document.getElementById('ob-nome').value.trim();
-  if(!nome){toast('Nome da obra é obrigatório','error');return}
+  const codigo=document.getElementById('ob-code').value.trim();
+  if(!validar([
+    [!nome,'Nome da obra é obrigatório'],
+    [existeDuplicado(cache.obras,'codigo',codigo,obraEditId),`O código ${codigo} já está em uso por outra obra.`],
+    [existeDuplicado(cache.obras,'nome',nome,obraEditId),'Já existe uma obra cadastrada com este nome.']
+  ]))return;
   const data={
     codigo:document.getElementById('ob-code').value,
     nome,
@@ -3544,11 +3857,18 @@ async function delObra(id){
 // RELATÓRIOS PDF / EXCEL
 // ══════════════════════════════════════════
 function genPDF(type){
+  // Se o CDN do jsPDF não carregou (firewall corporativo, offline), o
+  // destructuring abaixo lançava "Cannot destructure property 'jsPDF' of
+  // undefined" — erro seco no console e nada acontecia na tela.
+  if(!window.jspdf||!window.jspdf.jsPDF){
+    toast('Biblioteca de PDF não carregou. Verifique a conexão e recarregue a página.','error');
+    return;
+  }
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'landscape'});
   doc.setFontSize(16);
   doc.setTextColor(33,150,243);
-  const titles={frota:'Frota Geral — Realtec Engenharia',abast:'Abastecimentos — Realtec',manut:'Manutenções — Realtec',multas:'Multas / Infrações — Realtec'};
+  const titles={frota:'Frota Geral — Realtec Engenharia',abast:'Abastecimentos — Realtec',manut:'Manutenções — Realtec',multas:'Multas / Infrações — Realtec',os:'Ordens de Serviço — Realtec'};
   doc.text(titles[type]||'Relatório',14,20);
   doc.setFontSize(9);doc.setTextColor(120,120,120);
   doc.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`,14,28);
@@ -3597,12 +3917,41 @@ function genPDF(type){
       styles:{fontSize:7.5,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]},
       columnStyles:{4:{cellWidth:55}}
     });
+  }else if(type==='os'){
+    // O card "Ordem de Serviço" da tela de Relatórios chamava genPDF('os'),
+    // que não existia: o PDF saía só com o cabeçalho e mesmo assim exibia
+    // "PDF gerado!". Agora emite a listagem consolidada de OS. (Para a OS
+    // individual em formato ISO 9001, use o botão 🖨 na tela Ordem de Serviço.)
+    const stLabelOS={aberta:'Aberta',em_andamento:'Em Andamento',concluida:'Concluída',cancelada:'Cancelada'};
+    const tipoLabelOS={preventiva:'Preventiva',corretiva:'Corretiva',pneus:'Pneus/Alinhamento',funilaria:'Funilaria',eletrica:'Elétrica',revisao:'Revisão',higienizacao:'Higienização',documentacao:'Documentação',outro:'Outro'};
+    const listaOS=cache.ordens||[];
+    const custoAcum=listaOS.reduce((s,o)=>s+(Number(o.custo_real)||Number(o.custo_estimado)||0),0);
+    doc.setFontSize(9);doc.setTextColor(30,58,92);
+    doc.text(`Total de OS: ${listaOS.length}  |  Custo acumulado: ${fmt$(custoAcum)}`,14,34);
+    doc.autoTable({startY:39,head:[['Nº OS','Abertura','Placa','Motorista','Tipo','Descrição','Fornecedor','Custo','Previsão','Status']],
+      body:listaOS.map(o=>{
+        const v=cache.veiculos.find(x=>x.id===o.veiculo_id);
+        const mo=cache.motoristas.find(x=>x.id===o.motorista_id);
+        const custo=Number(o.custo_real)||Number(o.custo_estimado)||0;
+        return [o.numero||'—',fmtDate(o.data_abertura),v?v.placa:'—',mo?mo.nome:'—',tipoLabelOS[o.tipo_servico]||o.tipo_servico||'—',o.descricao||'—',o.fornecedor||'—',custo?fmt$(custo):'—',fmtDate(o.data_previsao),stLabelOS[o.status]||o.status||'—'];
+      }),
+      styles:{fontSize:7.5,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]},
+      columnStyles:{5:{cellWidth:50}}
+    });
+  }else{
+    // Tipo desconhecido: não salva um PDF vazio anunciando sucesso.
+    toast('Tipo de relatório não reconhecido: '+type,'error');
+    return;
   }
   doc.save(`realtec-${type}-${Date.now()}.pdf`);
   toast(`PDF ${titles[type]||''} gerado!`,'success');
 }
 
 function genExcel(type){
+  if(typeof XLSX==='undefined'){
+    toast('Biblioteca de Excel não carregou. Verifique a conexão e recarregue a página.','error');
+    return;
+  }
   const wb=XLSX.utils.book_new();
   const tipoMapXls={velocidade:'Velocidade',sinal:'Sinal',estacionamento:'Estacionamento',documentacao:'Documentação',alcool:'Alcoolemia',celular:'Celular',cinto:'Cinto',conversao:'Conversão',contramao:'Contramão',ultrapassagem:'Ultrapassagem',faixa_onibus:'Faixa de Ônibus',rodizio:'Rodízio',pedagio:'Pedágio',zona_azul:'Zona Azul',nao_indicacao_condutor:'Não Indicação de Condutor',carga:'Carga',outros:'Outros'};
   const linhaMulta=mu=>{
@@ -3649,8 +3998,19 @@ function genExcel(type){
     const ws4=XLSX.utils.json_to_sheet((cache.multas||[]).map(linhaMulta));
     XLSX.utils.book_append_sheet(wb,ws4,'Multas');
   }
-  XLSX.writeFile(wb,`realtec-frota-${type}-${Date.now()}.xlsx`);
-  toast('Excel exportado com sucesso!','success');
+  // Sem nenhuma aba, XLSX.writeFile lança exceção não tratada (Promise/erro
+  // seco no console). Falha de forma clara em vez de quebrar silenciosamente.
+  if(!wb.SheetNames.length){
+    toast('Tipo de exportação não reconhecido: '+type,'error');
+    return;
+  }
+  try{
+    XLSX.writeFile(wb,`realtec-frota-${type}-${Date.now()}.xlsx`);
+    toast('Excel exportado com sucesso!','success');
+  }catch(e){
+    console.error('genExcel error:',e);
+    toast('Erro ao gerar a planilha: '+e.message,'error');
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3707,14 +4067,14 @@ function renderMultas(){
       <td>${h(mot?mot.nome:(m.condutor_responsavel&&m.condutor_responsavel!=='VERIFICAR'?m.condutor_responsavel:'—'))}</td>
       <td><span class="badge badge-blue" title="${h(descNorm||'')}">${tipoLabel}</span></td>
       <td style="font-size:.72rem;color:var(--text-muted)" title="${h(autoOuLocal)}">${h(autoOuLocal.length>22?autoOuLocal.slice(0,22)+'…':autoOuLocal)}</td>
-      <td><span style="color:${(m.pontos>=7)?'#ef9a9a':(m.pontos>=5)?'#ffb74d':'var(--text-secondary)'}">${m.pontos||0} pts</span></td>
+      <td><span style="color:${(m.pontos>=7)?'#ef9a9a':(m.pontos>=5)?'#ffb74d':'var(--text-secondary)'}">${h(m.pontos||0)} pts</span></td>
       <td><strong style="color:${m.status==='paga'?'var(--success)':'#ffcdd2'}">${m.valor?fmt$(m.valor):'—'}</strong></td>
       <td style="color:${isVencida?'#ef9a9a':'inherit'}">${fmtDate(venc)} ${isVencida?'⚠️':''}</td>
-      <td><span class="badge ${stMap[m.status]||'badge-gray'}">${m.status||'—'}</span></td>
+      <td><span class="badge ${stMap[m.status]||'badge-gray'}">${h(m.status||'—')}</span></td>
       <td style="text-align:center">${temAnexo?`<button onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" title="${h(m.anexo_nome||'Ver anexo')}" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--accent)">📎</button>`:'<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editMulta('${m.id}')" title="Editar">✏</button>
-        <button class="icon-btn d" onclick="delMulta('${m.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editMulta('${idAttr(m.id)}')" title="Editar">✏</button>
+        <button class="icon-btn d" onclick="delMulta('${idAttr(m.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3745,7 +4105,7 @@ function openMultaModal(m=null){
   document.getElementById('mu-anexo-preview').innerHTML='';
   // populate selects
   const veicSel=document.getElementById('mu-veic');
-  veicSel.innerHTML='<option value="">Selecione...</option>'+cache.veiculos.map(v=>`<option value="${v.id}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
+  veicSel.innerHTML='<option value="">Selecione...</option>'+cache.veiculos.map(v=>`<option value="${idAttr(v.id)}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
   // Preserva motorista atual mesmo se inativo (edição de registros antigos)
   populateMotorSelect('mu-motor','— Não identificado —', m?.motorista_id);
   if(m){
@@ -3779,7 +4139,32 @@ async function saveMulta(){
   const veicId=document.getElementById('mu-veic').value;
   const tipo=document.getElementById('mu-tipo').value;
   const valor=document.getElementById('mu-valor').value;
-  if(!veicId||!tipo||!valor){toast('Veículo, tipo e valor são obrigatórios','error');return}
+  const dataInfr=document.getElementById('mu-data').value;
+  const venc=document.getElementById('mu-venc').value;
+  const dataPag=document.getElementById('mu-datapag').value;
+  const statusMu=document.getElementById('mu-status').value;
+  const auto=document.getElementById('mu-auto').value.trim();
+  const pontosMu=document.getElementById('mu-pontos').value;
+  if(!validar([
+    [!veicId,'Selecione o veículo'],
+    [!tipo,'Selecione o tipo de infração'],
+    [!valor,'Informe o valor da multa'],
+    [Number(valor)<=0,'O valor da multa deve ser maior que zero.'],
+    [!ehInteiroEntre(pontosMu,0,10),'Pontos na CNH devem estar entre 0 e 10.'],
+    [!ehDataValida(dataInfr),'Data da infração inválida.'],
+    [ehDataFutura(dataInfr),'A data da infração não pode estar no futuro.'],
+    [!ehDataValida(venc),'Data de vencimento inválida.'],
+    [venc&&dataInfr&&diasEntre(dataInfr,venc)<0,'O vencimento não pode ser anterior à data da infração.'],
+    [!ehDataValida(dataPag),'Data de pagamento inválida.'],
+    [ehDataFutura(dataPag),'A data de pagamento não pode estar no futuro.'],
+    [dataPag&&dataInfr&&diasEntre(dataInfr,dataPag)<0,'O pagamento não pode ser anterior à data da infração.'],
+    // Coerência entre status e data de pagamento: sem isso o relatório
+    // financeiro mostrava multas "pagas" sem nenhuma data de quitação.
+    [statusMu==='paga'&&!dataPag,'Multa marcada como paga: informe a data de pagamento.'],
+    [statusMu!=='paga'&&!!dataPag,'Há data de pagamento preenchida, mas o status não é "Paga". Ajuste um dos dois.'],
+    [auto&&existeDuplicado(cache.multas,'auto_numero',auto,multaEditId),
+     `Já existe uma multa registrada com o auto de infração ${auto}.`]
+  ]))return;
   // Anexo é tratado separadamente do registro: uma falha no upload (bucket ausente,
   // arquivo grande, sem internet) NUNCA pode impedir o salvamento da multa.
   let anexoUrl=document.getElementById('mu-anexo-url').value||null;
@@ -3833,7 +4218,7 @@ async function saveMulta(){
     if(anexoFalhou)toast('O anexo não pôde ser enviado: '+anexoErroMsg,'warning');
   }catch(e){
     const colunaFaltante=detectarColunaFaltante(e.message);
-    if(colunaFaltante&&colunaFaltante in data){
+    if(colunaFaltante&&temPropriaChave(data,colunaFaltante)){
       try{
         const dataSemColuna={...data};
         delete dataSemColuna[colunaFaltante];
@@ -3875,9 +4260,16 @@ if(!cache.ordens)cache.ordens=[];
 
 function gerarNumeroOS(){
   const ano=new Date().getFullYear();
-  const existing=(cache.ordens||[]).filter(o=>o.numero&&o.numero.includes(String(ano)));
-  const seq=String(existing.length+1).padStart(3,'0');
-  return `OS-${ano}-${seq}`;
+  // Baseado no MAIOR sequencial já usado no ano, não na quantidade de OS.
+  // Com `length+1`, excluir uma OS fazia a próxima repetir um número já
+  // emitido — inaceitável em documento controlado ISO 9001.
+  const re=new RegExp(`^OS-${ano}-(\\d+)$`);
+  let maior=0;
+  (cache.ordens||[]).forEach(o=>{
+    const m=String(o.numero||'').match(re);
+    if(m)maior=Math.max(maior,Number(m[1])||0);
+  });
+  return `OS-${ano}-${String(maior+1).padStart(3,'0')}`;
 }
 
 function renderOS(){
@@ -3921,11 +4313,11 @@ function renderOS(){
       <td style="font-size:.72rem">${h(o.fornecedor||'—')}</td>
       <td><strong style="color:${custo>5000?'#c0392b':'#1a7a3c'}">${custo?fmt$(custo):'—'}</strong></td>
       <td style="font-size:.73rem">${fmtDate(o.data_previsao)}</td>
-      <td><span class="badge ${stMap[o.status]||'badge-gray'}">${stLabel[o.status]||o.status||'—'}</span></td>
+      <td><span class="badge ${stMap[o.status]||'badge-gray'}">${stLabel[o.status]||h(o.status||'')||'—'}</span></td>
       <td style="white-space:nowrap">
-        <button class="icon-btn e" onclick="editOS('${o.id}')" title="Editar">✏</button>
-        <button class="icon-btn" onclick="gerarPDFOSById('${o.id}')" title="Imprimir OS" style="color:#1558a8">🖨</button>
-        <button class="icon-btn d" onclick="delOS('${o.id}')" title="Excluir">✕</button>
+        <button class="icon-btn e" onclick="editOS('${idAttr(o.id)}')" title="Editar">✏</button>
+        <button class="icon-btn" onclick="gerarPDFOSById('${idAttr(o.id)}')" title="Imprimir OS" style="color:#1558a8">🖨</button>
+        <button class="icon-btn d" onclick="delOS('${idAttr(o.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -3952,11 +4344,11 @@ function openOSModal(o=null){
   document.getElementById('os-numero').value=gerarNumeroOS();
   // populate selects
   const veicSel=document.getElementById('os-veic');
-  veicSel.innerHTML='<option value="">Selecione...</option>'+cache.veiculos.map(v=>`<option value="${v.id}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
+  veicSel.innerHTML='<option value="">Selecione...</option>'+cache.veiculos.map(v=>`<option value="${idAttr(v.id)}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
   const motorSel=document.getElementById('os-motorista');
-  motorSel.innerHTML='<option value="">— Nenhum —</option>'+cache.motoristas.filter(x=>x.status==='ativo').map(m=>`<option value="${m.id}">${h(m.nome)}</option>`).join('');
+  motorSel.innerHTML='<option value="">— Nenhum —</option>'+cache.motoristas.filter(x=>x.status==='ativo').map(m=>`<option value="${idAttr(m.id)}">${h(m.nome)}</option>`).join('');
   const obraSel=document.getElementById('os-obra');
-  obraSel.innerHTML='<option value="">— Sem obra —</option>'+cache.obras.map(ob=>`<option value="${ob.id}">${h(ob.codigo?ob.codigo+' - ':'')}${h(ob.nome)}</option>`).join('');
+  obraSel.innerHTML='<option value="">— Sem obra —</option>'+cache.obras.map(ob=>`<option value="${idAttr(ob.id)}">${h(ob.codigo?ob.codigo+' - ':'')}${h(ob.nome)}</option>`).join('');
   if(o){
     osEditId=o.id;
     document.getElementById('m-os-title').textContent='Editar OS — '+o.numero;
@@ -3994,7 +4386,33 @@ async function saveOS(){
   const veicId=document.getElementById('os-veic').value;
   const tipo=document.getElementById('os-tipo').value;
   const descricao=document.getElementById('os-descricao').value.trim();
-  if(!veicId||!tipo||!descricao){toast('Veículo, tipo e descrição são obrigatórios','error');return}
+  const numeroOS=document.getElementById('os-numero').value.trim();
+  const abertura=document.getElementById('os-data').value;
+  const previsao=document.getElementById('os-previsao').value;
+  const conclusao=document.getElementById('os-conclusao').value;
+  const statusOS=document.getElementById('os-status').value;
+  const cnpj=document.getElementById('os-cnpj').value;
+  const custoEst=document.getElementById('os-custo-est').value;
+  const custoReal=document.getElementById('os-custo').value;
+  const kmOS=document.getElementById('os-km').value;
+  if(!validar([
+    [!veicId,'Selecione o veículo'],
+    [!tipo,'Selecione o tipo de serviço'],
+    [!descricao,'Descreva o serviço a ser executado'],
+    [!numeroOS,'O número da OS é obrigatório.'],
+    // Documento controlado ISO 9001 não pode ter numeração repetida.
+    [existeDuplicado(cache.ordens,'numero',numeroOS,osEditId),`O número ${numeroOS} já foi usado em outra OS.`],
+    [!ehDataValida(abertura),'Data de abertura inválida.'],
+    [!ehDataValida(previsao),'Data de previsão inválida.'],
+    [!ehDataValida(conclusao),'Data de conclusão inválida.'],
+    [previsao&&abertura&&diasEntre(abertura,previsao)<0,'A previsão de entrega não pode ser anterior à abertura da OS.'],
+    [conclusao&&abertura&&diasEntre(abertura,conclusao)<0,'A conclusão não pode ser anterior à abertura da OS.'],
+    [statusOS==='concluida'&&!conclusao,'OS marcada como concluída: informe a data de conclusão.'],
+    [soDigitos(cnpj)&&!ehCPFouCNPJValido(cnpj),'CNPJ/CPF do fornecedor inválido: confira os dígitos.'],
+    [!ehNumeroNaoNegativo(custoEst),'O custo estimado não pode ser negativo.'],
+    [!ehNumeroNaoNegativo(custoReal),'O custo real não pode ser negativo.'],
+    [!ehNumeroNaoNegativo(kmOS),'A quilometragem do veículo não pode ser negativa.']
+  ]))return;
   const data={
     numero:document.getElementById('os-numero').value,
     data_abertura:document.getElementById('os-data').value||null,
@@ -4064,6 +4482,10 @@ function gerarPDFOSById(id){
 }
 
 function gerarPDFOS(osData){
+  if(!window.jspdf||!window.jspdf.jsPDF){
+    toast('Biblioteca de PDF não carregou. Verifique a conexão e recarregue a página.','error');
+    return;
+  }
   if(!osData){
     // get from current modal if open
     const veicId=document.getElementById('os-veic')?.value;
@@ -4088,6 +4510,9 @@ function gerarPDFOS(osData){
       pecas_materiais:document.getElementById('os-pecas')?.value,
       observacoes:document.getElementById('os-obs')?.value,
       responsavel_autorizacao:document.getElementById('os-responsavel')?.value,
+      // obra_id faltava aqui: o bloco "OBRA / CENTRO DE CUSTO" sumia do PDF
+      // quando ele era gerado direto do modal, sem passar por saveOS().
+      obra_id:document.getElementById('os-obra')?.value||null,
     };
   }
   const {jsPDF}=window.jspdf;
@@ -4247,8 +4672,12 @@ const veiculosSeed=[
   {placa:'DQG9038',modelo:'PALIO FIRE FLEX',tipo:'carro',ano:'2005',km_atual:110000,combustivel:'flex',status:'ativo'},
 ];
 async function seedVeiculosData(){
-  if((cache.veiculos||[]).length>0){
-    console.log('Veículos já existem, seed de veículos ignorado.');
+  // Usa a contagem BRUTA vinda do banco (inclui registros com exclusão lógica).
+  // Com a contagem do cache filtrado, apagar todos os veículos fazia os 11
+  // veículos da planilha serem recriados no próximo F5.
+  const totalNoBanco=cache._brutos?cache._brutos.veiculos:(cache.veiculos||[]).length;
+  if(totalNoBanco>0){
+    console.log('Veículos já existem no banco, seed de veículos ignorado.');
     return;
   }
   toast('Importando frota de veículos...','info');
@@ -4267,11 +4696,13 @@ async function seedVeiculosData(){
 async function seedPlanilhaData(){
   // Veículos primeiro, para multas/manutenções já saírem vinculadas.
   await seedVeiculosData();
-  // Only seed if tables are empty
-  const multasCount=(cache.multas||[]).length;
-  const manutCount=(cache.manutencoes||[]).length;
+  // Só semeia se as tabelas estiverem realmente vazias NO BANCO.
+  // Contagem bruta (inclui excluídos logicamente): sem isso, apagar todas as
+  // multas fazia as 31 multas da planilha reaparecerem no próximo carregamento.
+  const multasCount=cache._brutos?cache._brutos.multas:(cache.multas||[]).length;
+  const manutCount=cache._brutos?cache._brutos.manutencoes:(cache.manutencoes||[]).length;
   if(multasCount>0||manutCount>0){
-    console.log('Dados já existem, seed ignorado.');
+    console.log('Dados já existem no banco, seed ignorado.');
     return;
   }
   toast('Importando dados da planilha...','info');
