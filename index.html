@@ -551,6 +551,26 @@ textarea.form-input{resize:vertical;min-height:68px}
 .alert-critical{background:rgba(244,67,54,.07);border-color:rgba(244,67,54,.28)}
 .alert-warning{background:rgba(255,152,0,.07);border-color:rgba(255,152,0,.28)}
 
+/* ── Painel de alertas prioritários do Dashboard ── */
+.prio-panel{border:1px solid rgba(244,67,54,.32);background:linear-gradient(145deg,#fff6f5 0%,#fdecea 100%);
+  border-radius:12px;padding:15px 17px;box-shadow:0 2px 10px rgba(192,57,43,.08)}
+.prio-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.prio-title{font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:700;color:#a5281c;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.prio-count{background:var(--danger);color:#fff;border-radius:20px;padding:1px 9px;font-size:.62rem;font-weight:700;font-family:'Exo 2',sans-serif;letter-spacing:.04em}
+.prio-list{display:flex;flex-direction:column;gap:6px}
+.prio-item{display:flex;align-items:flex-start;gap:9px;background:rgba(255,255,255,.72);border:1px solid rgba(244,67,54,.18);
+  border-radius:8px;padding:8px 11px;font-size:.78rem;font-weight:600;color:var(--text-primary);line-height:1.35}
+.prio-item .prio-ico{flex-shrink:0;font-size:.9rem;line-height:1.3}
+.prio-more{font-size:.68rem;color:#a5281c;font-weight:600;margin-top:6px}
+.prio-panel.calmo{border-color:rgba(180,83,9,.28);background:linear-gradient(145deg,#fffaf2 0%,#fef3e2 100%)}
+.prio-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.prio-cat{background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.06);border-radius:9px;padding:9px 11px}
+.prio-cat-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.68rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);margin-bottom:7px}
+.prio-count.neutro{background:var(--warning)}
+.prio-item.ok{border-color:rgba(180,83,9,.18)}
+@media(max-width:768px){.prio-grid{grid-template-columns:1fr}}
+
 /* ── CHART ── */
 .chart-card{background:#ffffff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(26,107,191,.06)}
 
@@ -1051,7 +1071,7 @@ button{touch-action:manipulation}
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:.68rem;color:var(--text-muted)" id="topbar-clock"></div>
-        <div class="status-pill"><div class="dot-live"></div><span id='topbar-db'>Supabase</span></div>
+        <div class="status-pill"><div class="dot-live"></div><span id="topbar-db">Supabase</span></div>
       </div>
     </div>
 
@@ -1064,66 +1084,116 @@ button{touch-action:manipulation}
           <div class="page-title">Dashboard</div>
           <div class="page-subtitle">Visão geral da frota Realtec em tempo real</div>
         </div>
-        <div class="kpi-grid" id="dash-kpi-grid" style="grid-template-columns:repeat(5,1fr)">
-          <div class="kpi">
-            <div class="kpi-label" style="color:var(--accent-light)">Total Veículos</div>
-            <div class="kpi-value" id="k-total">0</div>
-            <div class="kpi-sub">Na frota</div>
-            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--accent),transparent)"></div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label" style="color:var(--success)">Disponíveis</div>
-            <div class="kpi-value" id="k-disp" style="color:var(--success)">0</div>
-            <div class="kpi-sub">Prontos para uso</div>
-            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--success),transparent)"></div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label" style="color:var(--warning)">Em Manutenção</div>
-            <div class="kpi-value" id="k-manut" style="color:var(--warning)">0</div>
-            <div class="kpi-sub">Aguardando serviço</div>
-            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--warning),transparent)"></div>
-          </div>
-          <div class="kpi">
-            <div class="kpi-label" style="color:var(--accent-light)">Abastec. (mês)</div>
-            <div class="kpi-value" id="k-abast" style="color:var(--accent-light)">0</div>
-            <div class="kpi-sub">Registros no mês</div>
-            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--accent-light),transparent)"></div>
-          </div>
-          <div class="kpi" onclick="nav('multas')" style="cursor:pointer">
-            <div class="kpi-label" style="color:#ef9a9a">Multas Pend.</div>
-            <div class="kpi-value" id="k-multas" style="color:#ef9a9a">0</div>
-            <div class="kpi-sub">Aguardando pagamento</div>
+        <!-- ── ÁREA DE ALERTAS PRIORITÁRIOS ──
+             Situações que exigem ação imediata (documento vencido, multa vencida,
+             CNH vencida). Alimentada pela MESMA função getAlerts() usada na tela
+             de Alertas — nenhuma regra de negócio nova foi criada aqui.
+             Fica oculta quando não há nada crítico, para não poluir a tela. -->
+        <div id="dash-prioridade" style="display:none;margin-bottom:18px"></div>
+
+        <!-- ── PRIORIDADE 1: Multas (aberto · tipo 6 · tipo 6A) ── -->
+        <div class="kpi-grid" id="dash-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+          <div class="kpi" onclick="nav('multas')" style="cursor:pointer" title="Processos com alguma etapa pendente">
+            <div class="kpi-label" style="color:var(--danger)">Multas em Aberto</div>
+            <div class="kpi-value" id="k-multas" style="color:var(--danger)">0</div>
+            <div class="kpi-sub" id="k-multas-valor">Aguardando pagamento</div>
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
           </div>
+          <div class="kpi" onclick="filtrarMultasPorDoc('notificacao')" style="cursor:pointer" title="Notificação de autuação — ainda sem boleto">
+            <div class="kpi-label" style="color:var(--accent-light)">Notificações · Tipo 6</div>
+            <div class="kpi-value" id="k-notificacoes" style="color:var(--accent-light)">0</div>
+            <div class="kpi-sub" id="k-notif-sub">Sem boleto emitido</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--accent-light),transparent)"></div>
+          </div>
+          <div class="kpi" onclick="filtrarMultasPorDoc('boleto')" style="cursor:pointer" title="Infração já convertida em multa com boleto">
+            <div class="kpi-label" style="color:var(--warning)">Com Boleto · Tipo 6A</div>
+            <div class="kpi-value" id="k-boletos" style="color:var(--warning)">0</div>
+            <div class="kpi-sub" id="k-boletos-sub">Boletos emitidos</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--warning),transparent)"></div>
+          </div>
         </div>
+
+        <!-- ── PRIORIDADE 2: Manutenções e disponibilidade da frota ── -->
+        <div class="kpi-grid" id="dash-kpi-grid-2" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kpi" onclick="nav('manutencoes')" style="cursor:pointer" title="Manutenções aguardando início">
+            <div class="kpi-label" style="color:var(--warning)">Manut. Pendentes</div>
+            <div class="kpi-value" id="k-manut-abertas" style="color:var(--warning)">0</div>
+            <div class="kpi-sub" id="k-manut-custo">Aguardando início</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--warning),transparent)"></div>
+          </div>
+          <div class="kpi" onclick="nav('manutencoes')" style="cursor:pointer" title="Manutenções e OS em execução">
+            <div class="kpi-label" style="color:var(--accent-light)">Manut. em Andamento</div>
+            <div class="kpi-value" id="k-manut-andamento" style="color:var(--accent-light)">0</div>
+            <div class="kpi-sub" id="k-manut-and-sub">Em execução</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--accent-light),transparent)"></div>
+          </div>
+          <div class="kpi" onclick="nav('veiculos')" style="cursor:pointer" title="Veículos indisponíveis">
+            <div class="kpi-label" style="color:var(--danger)">Veículos Parados</div>
+            <div class="kpi-value" id="k-parados" style="color:var(--danger)">0</div>
+            <div class="kpi-sub">Em manutenção ou inativos</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
+          </div>
+          <div class="kpi" onclick="nav('veiculos')" style="cursor:pointer" title="Veículos prontos para uso">
+            <div class="kpi-label" style="color:var(--success)">Veículos Disponíveis</div>
+            <div class="kpi-value" id="k-disp" style="color:var(--success)">0</div>
+            <div class="kpi-sub" id="k-disp-sub">Prontos para uso</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--success),transparent)"></div>
+          </div>
+        </div>
+
+        <!-- Indicadores mantidos (nenhum foi removido), em faixa compacta -->
+        <div class="kpi-grid" id="dash-kpi-grid-3" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+          <div class="kpi" onclick="nav('veiculos')" style="cursor:pointer">
+            <div class="kpi-label" style="color:var(--text-muted)">Total de Veículos</div>
+            <div class="kpi-value" id="k-total" style="font-size:1.7rem">0</div>
+            <div class="kpi-sub">Na frota</div>
+          </div>
+          <div class="kpi" onclick="nav('ordemservico')" style="cursor:pointer">
+            <div class="kpi-label" style="color:var(--text-muted)">OS em Aberto</div>
+            <div class="kpi-value" id="k-os-abertas" style="font-size:1.7rem">0</div>
+            <div class="kpi-sub" id="k-os-sub">Abertas / em andamento</div>
+          </div>
+          <div class="kpi" onclick="nav('veiculos')" style="cursor:pointer">
+            <div class="kpi-label" style="color:var(--text-muted)">Veículos em Manutenção</div>
+            <div class="kpi-value" id="k-manut" style="font-size:1.7rem">0</div>
+            <div class="kpi-sub">Status "manutenção"</div>
+          </div>
+        </div>
+
+        <!-- ── MANUTENÇÕES EM DESTAQUE ── -->
         <div class="grid-2" style="margin-bottom:14px">
+          <div class="card">
+            <div class="card-title">Manutenções Pendentes / Abertas</div>
+            <div id="dash-manut" style="font-size:.76rem"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Últimas Manutenções Concluídas</div>
+            <div id="dash-manut-hist" style="font-size:.76rem"></div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:14px">
+          <div class="chart-card">
+            <div class="card-title">KM Rodado por Veículo</div>
+            <canvas id="ch-km" height="150"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Litros por Tipo de Combustível</div>
+            <canvas id="ch-comb" height="150"></canvas>
+          </div>
+        </div>
+
+        <!-- ── ABASTECIMENTO — posição secundária, funcionalidade preservada ── -->
+        <div class="glow-line" style="margin-top:20px"></div>
+        <div style="margin-bottom:9px;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700">Abastecimento</div>
+        <div class="grid-2">
           <div class="chart-card">
             <div class="card-title">Abastecimentos — 30 dias</div>
             <canvas id="ch-abast" height="150"></canvas>
           </div>
-          <div class="chart-card">
-            <div class="card-title">KM por Veículo (mês)</div>
-            <canvas id="ch-km" height="150"></canvas>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="chart-card">
-            <div class="card-title">Custo Combustível por Tipo</div>
-            <canvas id="ch-comb" height="180"></canvas>
-          </div>
-          <div>
-            <div class="card" style="margin-bottom:12px">
-              <div class="card-title">Últimos Abastecimentos</div>
-              <div id="dash-abast" style="font-size:.76rem"></div>
-            </div>
-            <div class="card">
-              <div class="card-title">Manutenções Pendentes / Abertas</div>
-              <div id="dash-manut" style="font-size:.76rem"></div>
-            </div>
-            <div class="card" style="margin-top:12px">
-              <div class="card-title">Últimas Manutenções Concluídas</div>
-              <div id="dash-manut-hist" style="font-size:.76rem"></div>
-            </div>
+          <div class="card">
+            <div class="card-title">Últimos Abastecimentos <span style="margin-left:auto;font-weight:700;color:var(--accent-light)"><span id="k-abast">0</span> no mês</span></div>
+            <div id="dash-abast" style="font-size:.76rem"></div>
           </div>
         </div>
       </div>
@@ -1219,12 +1289,13 @@ button{touch-action:manipulation}
           <select id="mn-status" class="form-input" style="max-width:160px" onchange="renderManut()">
             <option value="">Todos</option>
             <option value="aberto">Aberto</option>
+            <option value="em_andamento">Em Andamento</option>
             <option value="encerrado">Encerrado</option>
           </select>
         </div>
         <div class="tbl-wrap tbl-scroll">
           <table class="dtbl">
-            <thead><tr><th>Data</th><th>Placa</th><th>Veículo</th><th>Tipo</th><th>Serviço</th><th>KM</th><th>Custo (R$)</th><th>Status</th><th>Anexo</th><th>Ações</th></tr></thead>
+            <thead><tr><th>RMV</th><th>NF</th><th>Data</th><th>Placa</th><th>Veículo</th><th>Tipo</th><th>Serviço</th><th>KM</th><th>Custo (R$)</th><th>Status</th><th>Anexo</th><th>Ações</th></tr></thead>
             <tbody id="manut-body"></tbody>
           </table>
         </div>
@@ -1325,15 +1396,15 @@ button{touch-action:manipulation}
         <!-- KPIs multas -->
         <div class="kpi-grid" style="margin-bottom:18px">
           <div class="kpi">
-            <div class="kpi-label" style="color:#ef9a9a">Total Multas</div>
+            <div class="kpi-label" style="color:#ef9a9a">Processos de Multa</div>
             <div class="kpi-value" id="km-total" style="color:#ef9a9a">0</div>
-            <div class="kpi-sub">Registradas</div>
+            <div class="kpi-sub" id="km-total-sub">Infrações distintas (6 + 6A contam 1)</div>
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
           </div>
           <div class="kpi">
-            <div class="kpi-label" style="color:var(--warning)">Pendentes</div>
+            <div class="kpi-label" style="color:var(--warning)">Em Aberto</div>
             <div class="kpi-value" id="km-pend" style="color:var(--warning)">0</div>
-            <div class="kpi-sub">Aguardando pagamento</div>
+            <div class="kpi-sub">Processos com etapa pendente</div>
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--warning),transparent)"></div>
           </div>
           <div class="kpi">
@@ -1358,6 +1429,12 @@ button{touch-action:manipulation}
             <option value="recurso">Em Recurso</option>
             <option value="cancelada">Cancelada</option>
           </select>
+          <select id="mt-doc-f" class="form-input" style="max-width:200px" onchange="renderMultas()" title="Tipo 6 = Notificação de Autuação · Tipo 6A = mesma infração já convertida em multa com boleto">
+            <option value="">Notificações e Boletos</option>
+            <option value="notificacao">Somente Tipo 6 — Notificação</option>
+            <option value="boleto">Somente Tipo 6A — Boleto</option>
+            <option value="sem_boleto">Tipo 6 ainda sem boleto</option>
+          </select>
           <input id="mt-from" type="date" class="form-input" style="max-width:145px" onchange="renderMultas()"/>
           <input id="mt-to" type="date" class="form-input" style="max-width:145px" onchange="renderMultas()"/>
           <button class="btn btn-ghost btn-sm" onclick="limparFiltrosMulta()">Limpar</button>
@@ -1367,10 +1444,11 @@ button{touch-action:manipulation}
             <thead>
               <tr>
                 <th>Data Infração</th>
+                <th>Documento</th>
                 <th>Placa</th>
                 <th>Veículo</th>
-                <th>Motorista</th>
-                <th>Tipo Infração</th>
+                <th>Condutor</th>
+                <th>Infração</th>
                 <th>Auto Nº / Local</th>
                 <th>Pontos</th>
                 <th>Valor (R$)</th>
@@ -1484,10 +1562,29 @@ button{touch-action:manipulation}
     </div>
     <input type="hidden" id="mu-id"/>
     <div class="form-grid form-grid-2">
+      <div class="form-group"><label class="form-label">Documento *</label>
+        <select id="mu-doc" class="form-input" onchange="atualizaDicaDocMulta()">
+          <option value="NOTIFICAÇÃO">Tipo 6 — Notificação de Autuação</option>
+          <option value="BOLETO">Tipo 6A — Multa com boleto</option>
+        </select>
+        <div id="mu-doc-dica" class="form-note"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Item / Nº do processo</label><input id="mu-item" class="form-input" placeholder="Ex.: 6 ou 6A"/>
+        <div class="form-note" style="color:var(--text-muted)">Mesma numeração da planilha. O sufixo “A” liga o boleto à notificação.</div>
+      </div>
       <div class="form-group"><label class="form-label">Data da Infração *</label><input id="mu-data" type="date" class="form-input"/></div>
       <div class="form-group"><label class="form-label">Veículo *</label><select id="mu-veic" class="form-input"><option value="">Selecione...</option></select></div>
-      <div class="form-group"><label class="form-label">Motorista</label><select id="mu-motor" class="form-input"><option value="">— Não identificado —</option></select></div>
-      <div class="form-group"><label class="form-label">Tipo de Infração *</label>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">Condutor</label>
+        <input id="mu-condutor" class="form-input" list="lista-condutores" placeholder="Digite ou selecione quem conduzia o veículo" autocomplete="off" onchange="vincularCondutorMotorista()"/>
+        <datalist id="lista-condutores"></datalist>
+        <div class="form-note" style="color:var(--text-muted)">Deixe em branco (ou use “VERIFICAR”) enquanto a indicação não for apurada.</div>
+      </div>
+      <div class="form-group"><label class="form-label">Motorista cadastrado (vínculo opcional)</label><select id="mu-motor" class="form-input"><option value="">— Não identificado —</option></select></div>
+      <!-- OCULTO A PEDIDO DA REALTEC — não faz parte do processo operacional.
+           Possui dependências (renderMultas, genPDF, genExcel), por isso a
+           estrutura foi PRESERVADA: o campo continua no DOM e no banco, apenas
+           sai da interface. Basta remover o style="display:none" para reexibir. -->
+      <div class="form-group" id="grp-mu-tipo" style="display:none"><label class="form-label">Tipo de Infração</label>
         <select id="mu-tipo" class="form-input">
           <option value="">Selecione...</option>
           <option value="velocidade">Excesso de Velocidade</option>
@@ -1509,7 +1606,9 @@ button{touch-action:manipulation}
           <option value="outros">Outros</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Nº do Auto de Infração</label><input id="mu-auto" class="form-input" placeholder="Ex: 12345678"/></div>
+      <!-- OCULTO A PEDIDO DA REALTEC — dependências em renderMultas/genPDF/genExcel
+           e na validação de duplicidade; estrutura preservada. -->
+      <div class="form-group" id="grp-mu-auto" style="display:none"><label class="form-label">Nº do Auto de Infração</label><input id="mu-auto" class="form-input" placeholder="Ex: 12345678"/></div>
       <div class="form-group"><label class="form-label">Órgão Autuador</label><input id="mu-orgao" class="form-input" placeholder="DETRAN, PRF, PMC..."/></div>
       <div class="form-group"><label class="form-label">Pontos na CNH</label>
         <select id="mu-pontos" class="form-input">
@@ -1522,7 +1621,7 @@ button{touch-action:manipulation}
         </select>
       </div>
       <div class="form-group"><label class="form-label">Valor da Multa (R$) *</label><input id="mu-valor" type="number" class="form-input" placeholder="0.00" step="0.01" min="0"/></div>
-      <div class="form-group"><label class="form-label">Data de Vencimento</label><input id="mu-venc" type="date" class="form-input"/></div>
+      <div class="form-group"><label class="form-label">Vencimento do Boleto</label><input id="mu-venc" type="date" class="form-input"/></div>
       <div class="form-group"><label class="form-label">Status *</label>
         <select id="mu-status" class="form-input">
           <option value="pendente">Pendente</option>
@@ -1531,7 +1630,9 @@ button{touch-action:manipulation}
           <option value="cancelada">Cancelada</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Data de Pagamento</label><input id="mu-datapag" type="date" class="form-input"/></div>
+      <!-- OCULTO A PEDIDO DA REALTEC — dependências em genExcel e nas validações
+           de coerência com o status; estrutura preservada. -->
+      <div class="form-group" id="grp-mu-datapag" style="display:none"><label class="form-label">Data de Pagamento</label><input id="mu-datapag" type="date" class="form-input"/></div>
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Local da Infração</label><input id="mu-local" class="form-input" placeholder="Endereço ou trecho onde ocorreu a infração"/></div>
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Observações / Recurso</label><textarea id="mu-obs" class="form-input" rows="2" placeholder="Detalhes adicionais, andamento do recurso..."></textarea></div>
       <div class="form-group" style="grid-column:1/-1">
@@ -1541,6 +1642,7 @@ button{touch-action:manipulation}
         <input type="hidden" id="mu-anexo-nome"/>
         <div id="mu-anexo-preview" style="font-size:.78rem;color:var(--text-secondary);margin-top:6px"></div>
         <div id="mu-anexo-atual" style="font-size:.78rem;color:var(--text-muted);margin-top:6px"></div>
+        <button type="button" id="mu-anexo-del" class="btn btn-ghost btn-xs" style="display:none;margin-top:8px;color:var(--danger);border-color:rgba(192,57,43,.35)" onclick="excluirAnexo('multas')">🗑 Excluir anexo</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -1567,7 +1669,7 @@ button{touch-action:manipulation}
       <strong>ISO 9001</strong> — Documento rastreável de manutenção veicular. Preencha todos os campos obrigatórios (*).
     </div>
     <div class="form-grid form-grid-2">
-      <div class="form-group"><label class="form-label">Nº da OS *</label><input id="os-numero" class="form-input" placeholder="OS-2026-001" readonly style="background:#f4f8fe;font-weight:700"/></div>
+      <div class="form-group"><label class="form-label">Nº da OS *</label><input id="os-numero" class="form-input" placeholder="OS-2026-001" style="font-weight:700" title="Numeração livre — pode ser substituída pela nomenclatura da MRV"/></div>
       <div class="form-group"><label class="form-label">Data de Abertura *</label><input id="os-data" type="date" class="form-input"/></div>
       <div class="form-group"><label class="form-label">Veículo *</label><select id="os-veic" class="form-input" onchange="preencheModeloOS()"><option value="">Selecione...</option></select></div>
       <div class="form-group"><label class="form-label">Motorista Responsável</label><select id="os-motorista" class="form-input"><option value="">— Nenhum —</option></select></div>
@@ -1766,10 +1868,14 @@ button{touch-action:manipulation}
       <div class="form-group"><label class="form-label">Custo (R$)</label><input id="mn-custo" type="number" class="form-input" placeholder="0.00" min="0" step="0.01"/></div>
       <div class="form-group"><label class="form-label">Status</label>
         <select id="mn-status-form" class="form-input">
-          <option value="aberto">Aberto</option><option value="encerrado">Encerrado</option>
+          <option value="aberto">Aberto</option><option value="em_andamento">Em Andamento</option><option value="encerrado">Encerrado</option>
         </select>
       </div>
       <div class="form-group"><label class="form-label">Próx. Manut. (KM)</label><input id="mn-proxkm" type="number" class="form-input" placeholder="0" min="0"/></div>
+      <div class="form-group"><label class="form-label">RMV</label><input id="mn-rmv" class="form-input" placeholder="Ex.: 013"/>
+        <div class="form-note" style="color:var(--text-muted)">Requisição de manutenção — agrupa os itens do mesmo serviço.</div>
+      </div>
+      <div class="form-group"><label class="form-label">Nota Fiscal</label><input id="mn-nf" class="form-input" placeholder="Ex.: 136696"/></div>
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Observações</label><textarea id="mn-obs" class="form-input" rows="2" placeholder="..."></textarea></div>
       <div class="form-group" style="grid-column:1/-1">
         <label class="form-label">Anexo (Nota Fiscal / Relatório / OM — PDF ou JPG)</label>
@@ -1778,6 +1884,7 @@ button{touch-action:manipulation}
         <input type="hidden" id="mn-anexo-nome"/>
         <div id="mn-anexo-preview" style="font-size:.78rem;color:var(--text-secondary);margin-top:6px"></div>
         <div id="mn-anexo-atual" style="font-size:.78rem;color:var(--text-muted);margin-top:6px"></div>
+        <button type="button" id="mn-anexo-del" class="btn btn-ghost btn-xs" style="display:none;margin-top:8px;color:var(--danger);border-color:rgba(192,57,43,.35)" onclick="excluirAnexo('manutencoes')">🗑 Excluir anexo</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -2265,13 +2372,39 @@ function setDbStatus(state,label){
   const lbl=document.getElementById('db-status-label');
   if(dot){dot.className='db-dot '+state}
   if(lbl){lbl.textContent=label}
+  // A pílula do topo mostrava "Supabase" com o ponto verde pulsando SEMPRE,
+  // inclusive com a conexão caída — o usuário via sinal de "tudo certo" no
+  // canto superior e "Erro de conexão" no rodapé do menu ao mesmo tempo.
+  const topo=document.getElementById('topbar-db');
+  const pontoTopo=document.querySelector('#topbar .dot-live');
+  if(topo)topo.textContent=state==='ok'?'Supabase':(state==='err'?'Offline':'Conectando...');
+  if(pontoTopo){
+    pontoTopo.style.background=state==='ok'?'var(--success)':(state==='err'?'var(--danger)':'var(--warning)');
+    pontoTopo.style.animation=state==='ok'?'':'none';
+  }
 }
 
 // ══════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function normIds(r){const o={...r};['id','veiculo_id','motorista_id','obra_id'].forEach(k=>{if(o[k]!=null)o[k]=Number(o[k])});return o}
+// Converte as chaves numéricas para Number. Precisa rodar TAMBÉM ao atualizar o
+// cache depois de uma EDIÇÃO: os valores vêm de <select>.value, ou seja, texto
+// ("12"), enquanto as telas comparam com === contra o id numérico do veículo.
+// Sem isso, logo após editar um abastecimento/manutenção/multa/OS as colunas
+// Placa, Modelo e Motorista exibiam "—" até o usuário recarregar a página.
+// Só converte quando o valor realmente é numérico: registros criados pelo
+// fallback offline usam id alfanumérico (uid()), e Number() os transformaria
+// em NaN — o registro sumiria da tela por não casar com nenhum filtro.
+function normIds(r){
+  const o={...r};
+  ['id','veiculo_id','motorista_id','obra_id'].forEach(k=>{
+    if(o[k]==null||o[k]==='')return;
+    const n=Number(o[k]);
+    if(Number.isFinite(n))o[k]=n;
+  });
+  return o;
+}
 function h(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 // hAttr: escape para uso dentro de atributos com aspas simples (ex.: onclick="fn('${hAttr(nome)}')").
 // Escapa também apóstrofos e barras — necessário quando o valor pode conter nome de arquivo com aspas.
@@ -2315,7 +2448,7 @@ function fmtDate(iso){
   if(isNaN(d))return '—';
   return d.toLocaleDateString('pt-BR');
 }
-function fmtDT(iso){if(!iso)return '—';const d=new Date(iso);if(isNaN(d))return '—';return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+// (fmtDT foi removida: era código morto — nenhuma tela, relatório ou PDF a chamava.)
 // Versão segura para comparações de data (vencidas, alertas) — meio-dia local evita virar o dia ao comparar.
 function dateSafe(iso){if(!iso)return null;const m=String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12,0,0);const d=new Date(iso);return isNaN(d)?null:d}
 function nowISO(){return new Date().toISOString()}
@@ -2622,6 +2755,7 @@ function renderAll(){
     renderObras();
     renderMultas();
     renderOS();
+    renderAlerts();
     updBadge();
   }catch(e){
     console.warn('renderAll error:',e);
@@ -2662,6 +2796,11 @@ function nav(id){
   document.querySelectorAll(`.nav-link[data-section="${id}"]`).forEach(l=>l.classList.add('active'));
   document.getElementById('topbar-title').textContent=sectionMeta[id]||id;
   if(renders[id])renders[id]();
+  // A barra inferior (mobile) só era atualizada quando a própria barra era
+  // clicada. Navegando pelo menu lateral ou por um card do Dashboard, ela
+  // continuava destacando a tela anterior. Sincronizamos sempre — bnav() é
+  // idempotente, então as chamadas existentes continuam válidas.
+  bnav(id);
   closeMobileSidebar();
   // FAB: mostrar apenas em seções com cadastro
   const fabSections=['veiculos','abastecimentos','manutencoes','checklist','viagens','motoristas','obras','multas'];
@@ -2690,45 +2829,99 @@ function closeMobileSidebar(){
 function updBadge(){
   const alerts=getAlerts();
   const b=document.getElementById('alert-badge');
-  b.textContent=alerts.length;
-  b.style.display=alerts.length>0?'':'none';
+  if(b){
+    b.textContent=alerts.length;
+    b.style.display=alerts.length>0?'':'none';
+  }
+  // Se a tela de Alertas (ou o Dashboard) estiver aberta no momento em que os
+  // dados mudam, ela precisa refletir a mudança imediatamente. Antes, só o
+  // número do badge era atualizado: quem pagava uma multa vencida continuava
+  // vendo o alerta antigo na lista até trocar de tela e voltar.
+  const telaAlertas=document.getElementById('s-alerts');
+  if(telaAlertas&&telaAlertas.classList.contains('active'))renderAlerts();
+  const telaDash=document.getElementById('s-dashboard');
+  if(telaDash&&telaDash.classList.contains('active'))renderPrioridades();
 }
 function getAlerts(){
   const alerts=[];
   const now=new Date();
   cache.veiculos.forEach(v=>{
-    if(v.status==='manutencao') alerts.push({type:'warning',msg:`${v.placa} — ${v.modelo} está em manutenção`});
+    if(v.status==='manutencao') alerts.push({cat:'manutencao',type:'warning',msg:`${v.placa} — ${v.modelo} está em manutenção`});
     if(v.ipva_vencimento){
       const diff=Math.round((dateSafe(v.ipva_vencimento)-now)/(1000*60*60*24));
-      if(diff<0) alerts.push({type:'critical',msg:`⚠ IPVA VENCIDO há ${Math.abs(diff)} dias: ${v.placa} — ${v.modelo}`});
-      else if(diff<30) alerts.push({type:diff<7?'critical':'warning',msg:`IPVA vence em ${diff} dias: ${v.placa} — ${v.modelo}`});
+      if(diff<0) alerts.push({cat:'documento',type:'critical',msg:`⚠ IPVA VENCIDO há ${Math.abs(diff)} dias: ${v.placa} — ${v.modelo}`});
+      else if(diff<30) alerts.push({cat:'documento',type:diff<7?'critical':'warning',msg:`IPVA vence em ${diff} dias: ${v.placa} — ${v.modelo}`});
     }
     if(v.seguro_vencimento){
       const diff=Math.round((dateSafe(v.seguro_vencimento)-now)/(1000*60*60*24));
-      if(diff<0) alerts.push({type:'critical',msg:`⚠ Seguro VENCIDO há ${Math.abs(diff)} dias: ${v.placa} — ${v.modelo}`});
-      else if(diff<30) alerts.push({type:diff<7?'critical':'warning',msg:`Seguro vence em ${diff} dias: ${v.placa} — ${v.modelo}`});
+      if(diff<0) alerts.push({cat:'documento',type:'critical',msg:`⚠ Seguro VENCIDO há ${Math.abs(diff)} dias: ${v.placa} — ${v.modelo}`});
+      else if(diff<30) alerts.push({cat:'documento',type:diff<7?'critical':'warning',msg:`Seguro vence em ${diff} dias: ${v.placa} — ${v.modelo}`});
     }
   });
   cache.motoristas.forEach(m=>{
     if(m.validade_cnh){
       const diff=Math.round((dateSafe(m.validade_cnh)-now)/(1000*60*60*24));
-      if(diff<0) alerts.push({type:'critical',msg:`⚠ CNH VENCIDA há ${Math.abs(diff)} dias: ${m.nome} (${m.categoria_cnh})`});
-      else if(diff<60) alerts.push({type:diff<14?'critical':'warning',msg:`CNH vence em ${diff} dias: ${m.nome} (${m.categoria_cnh})`});
+      if(diff<0) alerts.push({cat:'documento',type:'critical',msg:`⚠ CNH VENCIDA há ${Math.abs(diff)} dias: ${m.nome} (${m.categoria_cnh})`});
+      else if(diff<60) alerts.push({cat:'documento',type:diff<14?'critical':'warning',msg:`CNH vence em ${diff} dias: ${m.nome} (${m.categoria_cnh})`});
     }
   });
-  // Multas vencidas ou próximas do vencimento
+  // ── Multas próximas do vencimento / vencidas ──
+  const placaDaMulta=m=>{
+    const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
+    return veic?veic.placa:(m.placa||'?');
+  };
   (cache.multas||[]).forEach(m=>{
     if(m.status==='pendente'&&m.vencimento_pagamento){
       const diff=Math.round((dateSafe(m.vencimento_pagamento)-now)/(1000*60*60*24));
-      const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
-      const placa=veic?veic.placa:(m.placa||'?');
-      if(diff<0) alerts.push({type:'critical',msg:`⚠ Multa VENCIDA há ${Math.abs(diff)} dias (${fmtDate(m.vencimento_pagamento)}) — ${placa} — ${fmt$(m.valor||0)}`});
-      else if(diff<7) alerts.push({type:'critical',msg:`Multa vence em ${diff} dias: ${placa} — ${fmt$(m.valor||0)}`});
-      else if(diff<15) alerts.push({type:'warning',msg:`Multa a vencer em ${diff} dias: ${placa}`});
+      const placa=placaDaMulta(m);
+      if(diff<0) alerts.push({cat:'multa',type:'critical',msg:`⚠ Multa VENCIDA há ${Math.abs(diff)} dias (${fmtDate(m.vencimento_pagamento)}) — ${placa} — ${fmt$(m.valor||0)}`});
+      else if(diff<7) alerts.push({cat:'multa',type:'critical',msg:`Multa vence em ${diff} dias: ${placa} — ${fmt$(m.valor||0)}`});
+      else if(diff<15) alerts.push({cat:'multa',type:'warning',msg:`Multa a vencer em ${diff} dias: ${placa}`});
+    }
+  });
+
+  // ── Multas aguardando indicação do condutor ──
+  // Na planilha a empresa marca "VERIFICAR" enquanto não apura quem dirigia.
+  // Não indicar no prazo gera uma NOVA autuação, bem mais cara (é o que se vê
+  // nos registros "NÃO INDICAÇÃO DE CONDUTOR") — por isso é alerta próprio.
+  (cache.multas||[]).forEach(m=>{
+    if(m.status!=='pendente'||!condutorPendente(m))return;
+    if(m.motorista_id)return; // já há motorista vinculado
+    const dias=m.data_infracao?diasEntre(m.data_infracao,today()):null;
+    const urgente=dias!=null&&dias>25;
+    alerts.push({cat:'condutor',type:urgente?'critical':'warning',
+      msg:`${urgente?'⚠ ':''}Condutor não indicado${dias!=null?` há ${dias} dias`:''}: ${placaDaMulta(m)} — ${fmtDate(m.data_infracao)}`});
+  });
+
+  // ── Manutenções vencidas (atrasadas) e programadas ──
+  cache.manutencoes.forEach(m=>{
+    if(m.status!=='aberto'&&m.status!=='em_andamento')return;
+    const dataRef=m.data||m.data_servico;
+    if(!dataRef)return;
+    const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
+    const placa=veic?veic.placa:(m.placa||'?');
+    const servico=m.servico||m.descricao_servico||'serviço';
+    const diff=Math.round((dateSafe(dataRef)-now)/(1000*60*60*24));
+    if(diff<0) alerts.push({cat:'manutencao',type:'critical',msg:`⚠ Manutenção ATRASADA há ${Math.abs(diff)} dias: ${placa} — ${servico}`});
+    else if(diff<=15) alerts.push({cat:'manutencao',type:'warning',msg:`Manutenção programada em ${diff} dia(s): ${placa} — ${servico}`});
+  });
+  // Revisão por quilometragem ultrapassada.
+  cache.veiculos.forEach(v=>{
+    const prox=Number(v.km_proxima_revisao||0);
+    const atual=Number(v.km_atual||0);
+    if(prox>0&&atual>=prox){
+      alerts.push({cat:'manutencao',type:'critical',msg:`⚠ Revisão vencida por KM: ${v.placa} — ${fmtKM(atual)} (prevista para ${fmtKM(prox)})`});
     }
   });
   return alerts;
 }
+// Categorias usadas pelo painel de alertas do Dashboard.
+const CATEGORIAS_ALERTA=[
+  {id:'condutor',rotulo:'Aguardando indicação de condutor',ico:'👤'},
+  {id:'multa',rotulo:'Multas a vencer / vencidas',ico:'🚦'},
+  {id:'manutencao',rotulo:'Manutenções vencidas e programadas',ico:'🔧'},
+  {id:'documento',rotulo:'Documentação a vencer',ico:'📄'}
+];
 
 // ══════════════════════════════════════════
 // CHART INSTANCES
@@ -2744,6 +2937,56 @@ const chartDefaults={
   }
 };
 
+// Atalho dos cards de multa: abre a tela já filtrada pelo tipo de documento.
+function filtrarMultasPorDoc(tipo){
+  nav('multas');
+  const f=document.getElementById('mt-doc-f');
+  if(f){f.value=tipo;renderMultas()}
+}
+
+// ══════════════════════════════════════════
+// ÁREA DE ALERTAS PRIORITÁRIOS (Dashboard)
+// ──────────────────────────────────────────
+// Reaproveita integralmente getAlerts() — a MESMA fonte da tela de Alertas.
+// Aqui só mudamos a APRESENTAÇÃO: destacamos no topo do Dashboard apenas o
+// que é crítico (vencido ou vencendo), com atalho para a tela completa.
+// Nenhuma regra de negócio nova foi introduzida.
+// ══════════════════════════════════════════
+const PRIO_MAX_POR_CAT=3;
+function renderPrioridades(){
+  const el=document.getElementById('dash-prioridade');
+  if(!el)return;
+  const todos=getAlerts();
+  const criticos=todos.filter(a=>a.type==='critical');
+  if(!todos.length){el.style.display='none';el.innerHTML='';return}
+
+  const blocos=CATEGORIAS_ALERTA.map(c=>{
+    const doGrupo=todos.filter(a=>a.cat===c.id);
+    if(!doGrupo.length)return '';
+    const crit=doGrupo.filter(a=>a.type==='critical').length;
+    const visiveis=doGrupo.slice().sort((a,b)=>(a.type==='critical'?-1:1)-(b.type==='critical'?-1:1)).slice(0,PRIO_MAX_POR_CAT);
+    const resto=doGrupo.length-visiveis.length;
+    return `<div class="prio-cat">
+      <div class="prio-cat-head">
+        <span>${c.ico} ${h(c.rotulo)}</span>
+        <span class="prio-count ${crit?'':'neutro'}">${doGrupo.length}</span>
+      </div>
+      ${visiveis.map(a=>`<div class="prio-item ${a.type==='critical'?'':'ok'}"><span class="prio-ico">${a.type==='critical'?'⚠':'•'}</span><span>${h(String(a.msg||'').replace(/^⚠\s*/,''))}</span></div>`).join('')}
+      ${resto>0?`<div class="prio-more">+ ${resto} nesta categoria</div>`:''}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  el.innerHTML=`
+    <div class="prio-panel ${criticos.length?'':'calmo'}">
+      <div class="prio-head">
+        <div class="prio-title">${criticos.length?'🔴 Ação Imediata':'🟡 Acompanhamento'} <span class="prio-count">${todos.length}</span></div>
+        <button class="btn ${criticos.length?'btn-danger':'btn-ghost'} btn-sm" onclick="nav('alerts')">Ver todos os alertas</button>
+      </div>
+      <div class="prio-grid">${blocos}</div>
+    </div>`;
+  el.style.display='';
+}
+
 // ══════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════
@@ -2753,12 +2996,60 @@ function renderDash(){
   const mesAtual=now.getMonth();
   const anoAtual=now.getFullYear();
 
-  document.getElementById('k-total').textContent=veics.length;
-  const multasPend=(cache.multas||[]).filter(m=>m.status==='pendente').length;
-  const km2=document.getElementById('k-multas');
-  if(km2)km2.textContent=multasPend;
-  document.getElementById('k-disp').textContent=veics.filter(v=>v.status==='ativo').length;
-  document.getElementById('k-manut').textContent=veics.filter(v=>v.status==='manutencao').length;
+  // setTexto(): centraliza a escrita nos KPIs. Antes, um getElementById().textContent
+  // direto lançava TypeError e abortava renderDash() no meio se algum card fosse
+  // reposicionado — o dashboard ficava pela metade sem nenhum erro visível ao usuário.
+  const setTexto=(id,valor)=>{const el=document.getElementById(id);if(el)el.textContent=valor};
+
+  // ── PRIORIDADE 1: Multas (regra 6 / 6A) ──
+  // "Em aberto" conta PROCESSOS, não lançamentos: a notificação e o boleto da
+  // mesma infração são uma multa só. Já Notificações e Boletos contam
+  // lançamentos, porque ali o que interessa é o estágio do documento.
+  const todasMultas=cache.multas||[];
+  const processos=agruparProcessosMulta(todasMultas);
+  const gruposAbertos=[...processos.values()].filter(processoEmAberto);
+  setTexto('k-multas',gruposAbertos.length);
+  const valorAberto=gruposAbertos.reduce((s,g)=>s+valorProcessoMulta(g),0);
+  setTexto('k-multas-valor',gruposAbertos.length?`${fmt$(valorAberto)} em aberto`:'Nenhuma multa em aberto');
+
+  const notificacoes=todasMultas.filter(ehNotificacaoMulta);
+  const boletos=todasMultas.filter(ehBoletoMulta);
+  const semBoleto=notificacoes.filter(m=>notificacaoSemBoleto(m,processos));
+  setTexto('k-notificacoes',notificacoes.length);
+  setTexto('k-notif-sub',semBoleto.length?`${semBoleto.length} ainda sem boleto`:'Todas já convertidas');
+  setTexto('k-boletos',boletos.length);
+  const valorBoletos=boletos.reduce((s,m)=>s+(Number(m.valor)||0),0);
+  setTexto('k-boletos-sub',valorBoletos>0?`${fmt$(valorBoletos)} em boletos`:'Boletos emitidos');
+
+  // ── PRIORIDADE 2: Manutenções e disponibilidade ──
+  // "concluida" é sinônimo legado de "encerrado"; aberto exige ação.
+  const manutAbertas=cache.manutencoes.filter(m=>m.status==='aberto');
+  setTexto('k-manut-abertas',manutAbertas.length);
+  const custoAbertas=manutAbertas.reduce((s,m)=>s+(Number(m.custo!=null?m.custo:m.custo_total)||0),0);
+  setTexto('k-manut-custo',custoAbertas>0?`${fmt$(custoAbertas)} previstos`:'Aguardando início');
+
+  // Em andamento = manutenções marcadas como tal + OS em execução, que é
+  // como a Realtec acompanha o serviço já iniciado na oficina.
+  const manutAndamento=cache.manutencoes.filter(m=>m.status==='em_andamento');
+  const osAndamento=(cache.ordens||[]).filter(o=>o.status==='em_andamento');
+  setTexto('k-manut-andamento',manutAndamento.length+osAndamento.length);
+  setTexto('k-manut-and-sub',osAndamento.length?`${osAndamento.length} via Ordem de Serviço`:'Em execução');
+
+  const parados=veics.filter(v=>v.status==='manutencao'||v.status==='inativo');
+  setTexto('k-parados',parados.length);
+  const disponiveis=veics.filter(v=>v.status==='ativo');
+  setTexto('k-disp',disponiveis.length);
+  setTexto('k-disp-sub',veics.length?`de ${veics.length} veículos da frota`:'Prontos para uso');
+
+  // ── Indicadores mantidos ──
+  setTexto('k-total',veics.length);
+  setTexto('k-manut',veics.filter(v=>v.status==='manutencao').length);
+  const osAbertas=(cache.ordens||[]).filter(o=>o.status==='aberta'||o.status==='em_andamento');
+  setTexto('k-os-abertas',osAbertas.length);
+  const osAtrasadas=osAbertas.filter(o=>o.data_previsao&&dateSafe(o.data_previsao)<now).length;
+  setTexto('k-os-sub',osAtrasadas>0?`${osAtrasadas} com prazo vencido`:'Abertas / em andamento');
+
+  renderPrioridades();
   // dateSafe() em vez de new Date(): para datas "puras" (YYYY-MM-DD) o JS
   // interpreta como UTC meia-noite, e em UTC-3 getMonth() devolvia o mês
   // anterior — todo abastecimento do dia 1º caía no mês errado.
@@ -2766,7 +3057,7 @@ function renderDash(){
     const d=dateSafe(a.data_hora||a.data);
     return d&&d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;
   });
-  document.getElementById('k-abast').textContent=abastMes.length;
+  setTexto('k-abast',abastMes.length);
 
   // Se o CDN do Chart.js não carregou, os KPIs e as listas continuam
   // funcionando — antes, o `new Chart(...)` lançava ReferenceError e
@@ -3023,7 +3314,7 @@ async function saveVeic(){
       const antes=cache.veiculos.find(x=>x.id==veicEditId);
       const res=await sbPatch('veiculos',veicEditId,data);
       const idx=cache.veiculos.findIndex(x=>x.id==veicEditId);
-      if(idx>=0) cache.veiculos[idx]={...cache.veiculos[idx],...(Array.isArray(res)?res[0]:data)};
+      if(idx>=0) cache.veiculos[idx]=normIds({...cache.veiculos[idx],...(Array.isArray(res)?res[0]:data)});
       registrarHistorico('veiculos',veicEditId,'edicao',{antes,depois:data}).catch(()=>{});
       toast('Veículo atualizado!','success');
     }else{
@@ -3033,7 +3324,7 @@ async function saveVeic(){
       registrarHistorico('veiculos',newV.id,'criacao',{depois:data}).catch(()=>{});
       toast('Veículo cadastrado!','success');
     }
-    closeVeicModal();renderVeiculos();updBadge();
+    closeVeicModal();renderVeiculos();updBadge();renderDash();
   }catch(e){
     console.error('saveVeic error:',e);
     toast('Erro ao salvar: '+e.message,'error');
@@ -3044,7 +3335,7 @@ async function delVeic(id){
     try{
       await softDelete('veiculos',id,'Exclusão manual pelo usuário');
       cache.veiculos=cache.veiculos.filter(x=>x.id!=id);
-      renderVeiculos();updBadge();toast('Veículo removido.','warning');
+      renderVeiculos();updBadge();renderDash();toast('Veículo removido.','warning');
     }catch(e){toast('Erro: '+e.message,'error')}
   });
 }
@@ -3052,18 +3343,22 @@ async function delVeic(id){
 // ══════════════════════════════════════════
 // ABASTECIMENTOS
 // ══════════════════════════════════════════
-function populateVeicSelect(selId){
+// emptyLabel e valorAtual são opcionais: sem eles o comportamento é exatamente
+// o de antes (rótulo padrão e preservação do que já estava selecionado).
+// valorAtual existe para quem ABRE um modal: passando '' num cadastro novo,
+// o select não herda o veículo do registro editado anteriormente.
+function populateVeicSelect(selId, emptyLabel='Selecione o veículo...', valorAtual){
   const sel=document.getElementById(selId);
   if(!sel)return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">Selecione o veículo...</option>'+
+  const cur=valorAtual!==undefined?String(valorAtual==null?'':valorAtual):sel.value;
+  sel.innerHTML=`<option value="">${emptyLabel}</option>`+
     cache.veiculos.map(v=>`<option value="${idAttr(v.id)}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
   if(cur) sel.value=cur;
 }
-function populateMotorSelect(selId, emptyLabel='— Sem motorista —', valorAtual=null){
+function populateMotorSelect(selId, emptyLabel='— Sem motorista —', valorAtual){
   const sel=document.getElementById(selId);
   if(!sel)return;
-  const cur=valorAtual!=null?String(valorAtual):sel.value;
+  const cur=valorAtual!==undefined?String(valorAtual==null?'':valorAtual):sel.value;
   // Mostra todos os ativos + o motorista atualmente selecionado (mesmo inativo,
   // para não perder o vínculo ao editar registros antigos).
   const ativos=cache.motoristas.filter(m=>m.status==='ativo');
@@ -3078,10 +3373,10 @@ function populateMotorSelect(selId, emptyLabel='— Sem motorista —', valorAtu
     lista.map(m=>`<option value="${idAttr(m.id)}">${h(m.nome)}${m.status!=='ativo'?' (inativo)':''}</option>`).join('');
   if(cur) sel.value=cur;
 }
-function populateObraSelect(selId, valorAtual=null){
+function populateObraSelect(selId, valorAtual){
   const sel=document.getElementById(selId);
   if(!sel)return;
-  const cur=valorAtual!=null?String(valorAtual):sel.value;
+  const cur=valorAtual!==undefined?String(valorAtual==null?'':valorAtual):sel.value;
   const ativas=cache.obras.filter(o=>o.status==='ativa');
   let lista=ativas;
   if(cur){
@@ -3142,8 +3437,11 @@ function openAbastModal(a=null){
   document.getElementById('ab-posto').value='';
   document.getElementById('ab-obs').value='';
   document.getElementById('ab-comb').value='diesel';
-  populateVeicSelect('ab-veic');
-  populateMotorSelect('ab-motor','— Sem motorista —', a?.motorista_id);
+  // Valor explícito: num lançamento NOVO passamos '' para o formulário não
+  // herdar o veículo/motorista do registro editado logo antes — erro que
+  // gravava abastecimento no veículo errado sem o usuário perceber.
+  populateVeicSelect('ab-veic','Selecione o veículo...', a?a.veiculo_id:'');
+  populateMotorSelect('ab-motor','— Sem motorista —', a?a.motorista_id:'');
   if(a){
     abastEditId=a.id;
     document.getElementById('ab-veic').value=a.veiculo_id||'';
@@ -3197,7 +3495,7 @@ async function saveAbast(){
     if(abastEditId){
       await sbPatch('abastecimentos',abastEditId,data);
       const idx=cache.abastecimentos.findIndex(x=>x.id==abastEditId);
-      if(idx>=0)cache.abastecimentos[idx]={...cache.abastecimentos[idx],...data};
+      if(idx>=0)cache.abastecimentos[idx]=normIds({...cache.abastecimentos[idx],...data});
       toast('Abastecimento atualizado!','success');
     }else{
       const res=await sbPost('abastecimentos',data);
@@ -3233,7 +3531,8 @@ function renderManut(){
   const st=document.getElementById('mn-status')?.value||'';
   let rows=cache.manutencoes.filter(m=>{
     const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
-    const mq=!q||(veic&&veic.placa?.toLowerCase().includes(q))||(m.servico?.toLowerCase().includes(q))||(m.descricao_servico?.toLowerCase().includes(q));
+    const placaEfetiva=((veic&&veic.placa)||m.placa||'').toLowerCase();
+    const mq=!q||placaEfetiva.includes(q)||(m.servico?.toLowerCase().includes(q))||(m.descricao_servico?.toLowerCase().includes(q))||String(m.rmv||'').toLowerCase()===q||String(m.nf||'').toLowerCase()===q||(m.fornecedor?.toLowerCase().includes(q));
     // "concluida" (vindo de importações/seed) é tratado como sinônimo de "encerrado"
     const statusNorm=m.status==='concluida'?'encerrado':m.status;
     const ms=!st||statusNorm===st;
@@ -3241,7 +3540,7 @@ function renderManut(){
   });
   const tb=document.getElementById('manut-body');
   if(!tb)return;
-  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="10">Nenhuma manutenção registrada</td></tr>';return}
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="12">Nenhuma manutenção registrada</td></tr>';return}
   tb.innerHTML=rows.map(m=>{
     const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
     const statusNorm=m.status==='concluida'?'encerrado':(m.status||'—');
@@ -3249,6 +3548,8 @@ function renderManut(){
     const custo=m.custo!=null?m.custo:m.custo_total;
     const temAnexo=!!(m.anexo_url);
     return `<tr>
+      <td><strong style="color:#1558a8">${h(m.rmv||'—')}</strong></td>
+      <td style="font-size:.72rem">${h(m.nf||'—')}</td>
       <td>${fmtDate(m.data||m.data_servico)}</td>
       <td><strong style="color:var(--text-primary)">${veic?h(veic.placa):h(m.placa||'—')}</strong></td>
       <td>${veic?h(veic.modelo):'—'}</td>
@@ -3256,7 +3557,7 @@ function renderManut(){
       <td title="${h(m.fornecedor||'')}">${h(servico)}</td>
       <td>${m.km?fmtKM(m.km):'—'}</td>
       <td>${custo?fmt$(custo):'—'}</td>
-      <td><span class="badge ${statusNorm==='aberto'?'badge-aberto':'badge-encerrado'}">${h(statusNorm)}</span></td>
+      <td><span class="badge ${statusNorm==='aberto'?'badge-aberto':statusNorm==='em_andamento'?'badge-manutencao':'badge-encerrado'}">${h(statusNorm==='em_andamento'?'em andamento':statusNorm)}</span></td>
       <td style="text-align:center">${temAnexo?`<button onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" title="${h(m.anexo_nome||'Ver anexo')}" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--accent)">📎</button>`:'<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="white-space:nowrap">
         <button class="icon-btn e" onclick="editManut('${idAttr(m.id)}')" title="Editar">✏</button>
@@ -3270,7 +3571,8 @@ let manutEditId=null;
 function openManutModal(m=null){
   manutEditId=null;
   document.getElementById('m-manut-title').textContent='Nova Manutenção';
-  ['mn-id','mn-servico','mn-oficina','mn-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['mn-id','mn-servico','mn-oficina','mn-obs','mn-rmv','mn-nf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  atualizaBotaoAnexo('manutencoes',false);
   ['mn-km','mn-custo','mn-proxkm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('mn-data').value=today();
   document.getElementById('mn-tipo').value='preventiva';
@@ -3280,7 +3582,7 @@ function openManutModal(m=null){
   document.getElementById('mn-anexo-nome').value='';
   document.getElementById('mn-anexo-atual').innerHTML='';
   document.getElementById('mn-anexo-preview').innerHTML='';
-  populateVeicSelect('mn-veic');
+  populateVeicSelect('mn-veic','Selecione o veículo...', m?m.veiculo_id:'');
   if(m){
     manutEditId=m.id;
     document.getElementById('m-manut-title').textContent='Editar Manutenção';
@@ -3294,10 +3596,13 @@ function openManutModal(m=null){
     document.getElementById('mn-status-form').value=m.status==='concluida'?'encerrado':(m.status||'aberto');
     document.getElementById('mn-proxkm').value=m.proxima_km||'';
     document.getElementById('mn-obs').value=m.observacoes||m.observacao||'';
+    document.getElementById('mn-rmv').value=m.rmv||'';
+    document.getElementById('mn-nf').value=m.nf||'';
     if(m.anexo_url){
       document.getElementById('mn-anexo-url').value=m.anexo_url;
       document.getElementById('mn-anexo-nome').value=m.anexo_nome||'';
       document.getElementById('mn-anexo-atual').innerHTML=`📎 Anexo atual: <a href="javascript:void(0)" onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" style="color:var(--accent)">${h(m.anexo_nome||'ver arquivo')}</a> (envie um novo arquivo para substituir)`;
+      atualizaBotaoAnexo('manutencoes',true);
     }
   }
   document.getElementById('m-manut').classList.add('open');
@@ -3340,6 +3645,8 @@ async function saveManut(){
     }
   }
   const data={
+    rmv:document.getElementById('mn-rmv').value.trim()||null,
+    nf:document.getElementById('mn-nf').value.trim()||null,
     veiculo_id:veicId,
     data:document.getElementById('mn-data').value,
     tipo:document.getElementById('mn-tipo').value,
@@ -3382,14 +3689,14 @@ async function persistManut(data){
     const antes=cache.manutencoes.find(x=>x.id==manutEditId);
     await sbPatch('manutencoes',manutEditId,data);
     const idx=cache.manutencoes.findIndex(x=>x.id==manutEditId);
-    if(idx>=0)cache.manutencoes[idx]={...cache.manutencoes[idx],...data};
+    if(idx>=0)cache.manutencoes[idx]=normIds({...cache.manutencoes[idx],...data});
     registrarHistorico('manutencoes',manutEditId,'edicao',{antes,depois:data}).catch(()=>{});
     // update veiculo status — só libera o veículo se NÃO houver outra
     // manutenção aberta para ele (evita marcar como "ativo" um veículo que
     // ainda tem outra OS/manutenção pendente em paralelo).
     const veic=cache.veiculos.find(v=>v.id==veicId);
     if(veic&&data.status==='encerrado'&&veic.status==='manutencao'){
-      const outrasAbertas=cache.manutencoes.some(x=>x.id!=manutEditId&&x.veiculo_id==veicId&&x.status==='aberto');
+      const outrasAbertas=cache.manutencoes.some(x=>x.id!=manutEditId&&x.veiculo_id==veicId&&(x.status==='aberto'||x.status==='em_andamento'));
       if(!outrasAbertas){
         await sbPatch('veiculos',veicId,{status:'ativo',km_proxima_revisao:data.proxima_km||veic.km_proxima_revisao}).catch(()=>{});
         veic.status='ativo';
@@ -3403,20 +3710,20 @@ async function persistManut(data){
     registrarHistorico('manutencoes',novo.id,'criacao',{depois:data}).catch(()=>{});
     // set veiculo to manutencao
     const veic=cache.veiculos.find(v=>v.id==veicId);
-    if(veic&&data.status==='aberto'){
+    if(veic&&(data.status==='aberto'||data.status==='em_andamento')){
       await sbPatch('veiculos',veicId,{status:'manutencao'}).catch(()=>{});
       veic.status='manutencao';
     }
     toast('Manutenção registrada!','success');
   }
-  closeManutModal();renderManut();renderVeiculos();updBadge();
+  closeManutModal();renderManut();renderVeiculos();updBadge();renderDash();
 }
 async function delManut(id){
   confirm2('Excluir manutenção','Remover este registro? Pode ser recuperado pelo suporte.',async()=>{
     try{
       await softDelete('manutencoes',id,'Exclusão manual pelo usuário');
       cache.manutencoes=cache.manutencoes.filter(x=>x.id!=id);
-      renderManut();updBadge();toast('Removido.','warning');
+      renderManut();updBadge();renderDash();toast('Removido.','warning');
     }catch(e){toast('Erro: '+e.message,'error')}
   });
 }
@@ -3461,8 +3768,8 @@ function openCheckModal(ck=null){
   ['ck-pneus','ck-oleo','ck-freios','ck-luzes','ck-agua','ck-docs'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='ok';
   });
-  populateVeicSelect('ck-veic');
-  populateMotorSelect('ck-motor','— Sem motorista —', ck?.motorista_id);
+  populateVeicSelect('ck-veic','Selecione o veículo...', ck?ck.veiculo_id:'');
+  populateMotorSelect('ck-motor','— Sem motorista —', ck?ck.motorista_id:'');
   if(ck){
     checkEditId=ck.id;
     document.getElementById('ck-veic').value=ck.veiculo_id||'';
@@ -3514,7 +3821,7 @@ async function saveCheck(){
     if(checkEditId){
       await sbPatch('checklists',checkEditId,data);
       const idx=cache.checklists.findIndex(x=>x.id==checkEditId);
-      if(idx>=0)cache.checklists[idx]={...cache.checklists[idx],...data};
+      if(idx>=0)cache.checklists[idx]=normIds({...cache.checklists[idx],...data});
       toast('Checklist atualizado!','success');
     }else{
       const res=await sbPost('checklists',data);
@@ -3575,9 +3882,9 @@ function openViagemModal(vg=null){
   ['vg-id','vg-destino','vg-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   ['vg-kmsaida','vg-kmcheg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('vg-data').value=today();
-  populateVeicSelect('vg-veic');
-  populateMotorSelect('vg-motor','— Sem motorista —', vg?.motorista_id);
-  populateObraSelect('vg-obra', vg?.obra_id);
+  populateVeicSelect('vg-veic','Selecione o veículo...', vg?vg.veiculo_id:'');
+  populateMotorSelect('vg-motor','— Sem motorista —', vg?vg.motorista_id:'');
+  populateObraSelect('vg-obra', vg?vg.obra_id:'');
   if(vg){
     viagemEditId=vg.id;
     document.getElementById('m-viagem-title').textContent='Editar Viagem';
@@ -3595,7 +3902,10 @@ function closeViagemModal(){document.getElementById('m-viagem').classList.remove
 async function saveViagem(){
   const veicId=document.getElementById('vg-veic').value;
   const kmSaida=document.getElementById('vg-kmsaida').value;
-  if(!veicId||!kmSaida){toast('Veículo e KM de saída são obrigatórios','error');return}
+  // A checagem manual de veículo/KM que existia aqui foi removida: o bloco
+  // validar() logo abaixo já cobre exatamente os mesmos dois campos, com
+  // mensagens mais específicas. Mantê-las duplicadas só criava dois caminhos
+  // de erro diferentes para a mesma situação.
   const kmCheg=document.getElementById('vg-kmcheg').value;
   const dataVg=document.getElementById('vg-data').value;
   if(!validar([
@@ -3626,7 +3936,7 @@ async function saveViagem(){
       const antes=cache.viagens.find(x=>x.id==viagemEditId);
       await sbPatch('viagens',viagemEditId,data);
       const idx=cache.viagens.findIndex(x=>x.id==viagemEditId);
-      if(idx>=0)cache.viagens[idx]={...cache.viagens[idx],...data};
+      if(idx>=0)cache.viagens[idx]=normIds({...cache.viagens[idx],...data});
       registrarHistorico('viagens',viagemEditId,'edicao',{antes,depois:data}).catch(()=>{});
       toast('Viagem atualizada!','success');
     }else{
@@ -3748,7 +4058,7 @@ async function saveMotor(){
     if(motorEditId){
       await sbPatch('motoristas',motorEditId,data);
       const idx=cache.motoristas.findIndex(x=>x.id==motorEditId);
-      if(idx>=0)cache.motoristas[idx]={...cache.motoristas[idx],...data};
+      if(idx>=0)cache.motoristas[idx]=normIds({...cache.motoristas[idx],...data});
       toast('Motorista atualizado!','success');
     }else{
       const res=await sbPost('motoristas',data);
@@ -3833,7 +4143,7 @@ async function saveObra(){
     if(obraEditId){
       await sbPatch('obras',obraEditId,data);
       const idx=cache.obras.findIndex(x=>x.id==obraEditId);
-      if(idx>=0)cache.obras[idx]={...cache.obras[idx],...data};
+      if(idx>=0)cache.obras[idx]=normIds({...cache.obras[idx],...data});
       toast('Obra atualizada!','success');
     }else{
       const res=await sbPost('obras',data);
@@ -3889,33 +4199,38 @@ function genPDF(type){
       styles:{fontSize:8,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]}
     });
   }else if(type==='manut'){
-    doc.autoTable({startY:35,head:[['Data','Placa','Tipo','Serviço','Fornecedor','KM','Custo','Status','Anexo']],
+    doc.autoTable({startY:35,head:[['RMV','NF','Data','Placa','Tipo','Serviço','Fornecedor','KM','Custo','Status','Anexo']],
       body:cache.manutencoes.map(m=>{
         const v=cache.veiculos.find(x=>x.id===m.veiculo_id);
         const statusNorm=m.status==='concluida'?'encerrado':(m.status||'—');
         const custo=m.custo!=null?m.custo:m.custo_total;
-        return [fmtDate(m.data||m.data_servico),v?v.placa:(m.placa||'—'),m.tipo||m.tipo_manutencao||'—',m.servico||m.descricao_servico||'—',m.oficina||m.fornecedor||'—',m.km?fmtKM(m.km):'—',custo?fmt$(custo):'—',statusNorm,m.anexo_url?'Sim':'Não'];
+        return [m.rmv||'—',m.nf||'—',fmtDate(m.data||m.data_servico),v?v.placa:(m.placa||'—'),m.tipo||m.tipo_manutencao||'—',m.servico||m.descricao_servico||'—',m.oficina||m.fornecedor||'—',m.km?fmtKM(m.km):'—',custo?fmt$(custo):'—',statusNorm,m.anexo_url?'Sim':'Não'];
       }),
       styles:{fontSize:8,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]}
     });
   }else if(type==='multas'){
     const tipoMap={velocidade:'Velocidade',sinal:'Sinal',estacionamento:'Estacionamento',documentacao:'Documentação',alcool:'Alcoolemia',celular:'Celular',cinto:'Cinto',conversao:'Conversão',contramao:'Contramão',ultrapassagem:'Ultrapassagem',faixa_onibus:'Faixa de Ônibus',rodizio:'Rodízio',pedagio:'Pedágio',zona_azul:'Zona Azul',nao_indicacao_condutor:'Não Indicação de Condutor',carga:'Carga',outros:'Outros'};
     const rows=(cache.multas||[]);
-    const totalGeral=rows.reduce((s,m)=>s+(Number(m.valor)||0),0);
-    const totalPend=rows.filter(m=>m.status==='pendente').reduce((s,m)=>s+(Number(m.valor)||0),0);
+    // Totais respeitam a regra 6/6A: o boleto substitui a notificação, senão o
+    // mesmo processo seria somado duas vezes no relatório financeiro.
+    const proc=agruparProcessosMulta(rows);
+    const grupos=[...proc.values()];
+    const totalGeral=grupos.reduce((s,g)=>s+valorProcessoMulta(g),0);
+    const totalPend=grupos.filter(processoEmAberto).reduce((s,g)=>s+valorProcessoMulta(g),0);
+    const qtdNotif=rows.filter(ehNotificacaoMulta).length, qtdBol=rows.filter(ehBoletoMulta).length;
     doc.setFontSize(9);doc.setTextColor(30,58,92);
-    doc.text(`Total de multas: ${rows.length}  |  Valor total: ${fmt$(totalGeral)}  |  Pendente: ${fmt$(totalPend)}`,14,34);
-    doc.autoTable({startY:39,head:[['Data','Placa','Motorista','Tipo','Auto Nº/Local','Pontos','Valor','Vencimento','Status','Anexo']],
+    doc.text(`Processos: ${grupos.length}  |  Notificacoes (6): ${qtdNotif}  |  Boletos (6A): ${qtdBol}  |  Valor total: ${fmt$(totalGeral)}  |  Em aberto: ${fmt$(totalPend)}`,14,34);
+    doc.autoTable({startY:39,head:[['Item','Doc','Data','Placa','Condutor','Infração','Cidade','Pontos','Valor','Vencimento','Status','Anexo']],
       body:rows.map(m=>{
         const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
         const mot=cache.motoristas.find(x=>x.id===m.motorista_id);
         const descNorm=normalizaDescricaoInfracao(m.descricao_infracao);
         const tipoLabel=tipoMap[m.tipo_infracao]||m.tipo_infracao||descNorm||'Outros';
-        const autoOuLocal=m.auto_numero||m.local_infracao||descNorm||'—';
-        return [fmtDate(m.data_infracao),veic?veic.placa:(m.placa||'—'),mot?mot.nome:(m.condutor_responsavel&&m.condutor_responsavel!=='VERIFICAR'?m.condutor_responsavel:'—'),tipoLabel,autoOuLocal,m.pontos||0,m.valor?fmt$(m.valor):'—',fmtDate(m.vencimento_pagamento),m.status||'—',m.anexo_url?'Sim':'Não'];
+        const condutor=(mot&&mot.nome)||(condutorPendente(m)?'A INDICAR':m.condutor_responsavel)||'—';
+        return [rotuloEtapaMulta(m),ehBoletoMulta(m)?'6A Boleto':'6 Notif.',fmtDate(m.data_infracao),veic?veic.placa:(m.placa||'—'),condutor,tipoLabel,m.local_infracao||'—',m.pontos||0,m.valor?fmt$(m.valor):'—',fmtDate(m.vencimento_pagamento),m.status||'—',m.anexo_url?'Sim':'Não'];
       }),
-      styles:{fontSize:7.5,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]},
-      columnStyles:{4:{cellWidth:55}}
+      styles:{fontSize:7,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]},
+      columnStyles:{5:{cellWidth:42},6:{cellWidth:30}}
     });
   }else if(type==='os'){
     // O card "Ordem de Serviço" da tela de Relatórios chamava genPDF('os'),
@@ -3958,7 +4273,14 @@ function genExcel(type){
     const v=cache.veiculos.find(x=>x.id===mu.veiculo_id);
     const m=cache.motoristas.find(x=>x.id===mu.motorista_id);
     const descNorm=normalizaDescricaoInfracao(mu.descricao_infracao);
-    return {'Data Infração':fmtDate(mu.data_infracao),Placa:v?v.placa:(mu.placa||'—'),Motorista:m?m.nome:(mu.condutor_responsavel&&mu.condutor_responsavel!=='VERIFICAR'?mu.condutor_responsavel:'—'),Tipo:tipoMapXls[mu.tipo_infracao]||mu.tipo_infracao||descNorm||'—','Auto Nº / Local':mu.auto_numero||mu.local_infracao||descNorm||'—',Órgão:mu.orgao_autuador||'—',Pontos:mu.pontos||0,Valor:mu.valor||0,Vencimento:fmtDate(mu.vencimento_pagamento),'Data Pagamento':fmtDate(mu.data_pagamento),Status:mu.status||'—',Anexo:mu.anexo_url?'Sim':'Não'};
+    // Colunas espelham a aba "MULTAS GERAL" da planilha da Realtec, acrescidas
+    // do tipo de documento (6 / 6A) e do status controlado pelo sistema.
+    return {ITEM:mu.item||rotuloEtapaMulta(mu),'DATA INFRAÇÃO':fmtDate(mu.data_infracao),PONTOS:mu.pontos||0,
+      'DESCRIÇÃO DA INFRAÇÃO':descNorm||tipoMapXls[mu.tipo_infracao]||'—',CIDADE:mu.local_infracao||'—',
+      PLACA:v?v.placa:(mu.placa||'—'),'MODELO VEÍCULO':v?v.modelo:(mu.modelo_veiculo||'—'),VALOR:mu.valor||0,
+      DOC:ehBoletoMulta(mu)?'BOLETO':'NOTIFICAÇÃO',VENCIMENTO:fmtDate(mu.vencimento_pagamento),
+      'CONDUTOR RESPONSÁVEL':(m&&m.nome)||mu.condutor_responsavel||'VERIFICAR',
+      STATUS:mu.status||'—',ANEXO:mu.anexo_url?'Sim':'Não'};
   };
   if(type==='veiculos'||type==='full'){
     const ws=XLSX.utils.json_to_sheet(cache.veiculos.map(v=>({Placa:v.placa,Modelo:v.modelo,Tipo:v.tipo,Cor:v.cor||'—',Ano:v.ano,'KM Atual':v.km_atual,Combustível:v.combustivel,Status:v.status,'IPVA Venc.':v.ipva_vencimento,'Seguro Venc.':v.seguro_vencimento})));
@@ -3981,7 +4303,7 @@ function genExcel(type){
       const v=cache.veiculos.find(x=>x.id===m.veiculo_id);
       const statusNorm=m.status==='concluida'?'encerrado':(m.status||'—');
       const custo=m.custo!=null?m.custo:m.custo_total;
-      return {Data:fmtDate(m.data||m.data_servico),Placa:v?v.placa:(m.placa||'—'),Tipo:m.tipo||m.tipo_manutencao,Serviço:m.servico||m.descricao_servico,Fornecedor:m.oficina||m.fornecedor,KM:m.km,Custo:custo,Status:statusNorm,Anexo:m.anexo_url?'Sim':'Não'};
+      return {RMV:m.rmv||'—',NF:m.nf||'—',Data:fmtDate(m.data||m.data_servico),Placa:v?v.placa:(m.placa||'—'),Tipo:m.tipo||m.tipo_manutencao,Serviço:m.servico||m.descricao_servico,Fornecedor:m.oficina||m.fornecedor,CNPJ:m.cnpj_fornecedor||'—','Valor Preventiva':m.custo_preventiva||0,'Valor Corretiva':m.custo_corretiva||0,KM:m.km,Custo:custo,Status:statusNorm,Observação:m.observacoes||m.observacao||'',Anexo:m.anexo_url?'Sim':'Não'};
     }));
     XLSX.utils.book_append_sheet(wb,ws,'Manutenções');
   }
@@ -3990,7 +4312,7 @@ function genExcel(type){
       const v=cache.veiculos.find(x=>x.id===m.veiculo_id);
       const statusNorm=m.status==='concluida'?'encerrado':(m.status||'—');
       const custo=m.custo!=null?m.custo:m.custo_total;
-      return {Data:fmtDate(m.data||m.data_servico),Placa:v?v.placa:(m.placa||'—'),Tipo:m.tipo||m.tipo_manutencao,Serviço:m.servico||m.descricao_servico,KM:m.km,Custo:custo,Status:statusNorm};
+      return {RMV:m.rmv||'—',NF:m.nf||'—',Data:fmtDate(m.data||m.data_servico),Placa:v?v.placa:(m.placa||'—'),Tipo:m.tipo||m.tipo_manutencao,Serviço:m.servico||m.descricao_servico,KM:m.km,Custo:custo,Status:statusNorm};
     }));
     XLSX.utils.book_append_sheet(wb,ws2,'Manutenções');
     const ws3=XLSX.utils.json_to_sheet(cache.motoristas.map(m=>({Matrícula:m.matricula,Nome:m.nome,CNH:m.numero_cnh,Categoria:m.categoria_cnh,Validade:fmtDate(m.validade_cnh),Setor:m.setor,Status:m.status})));
@@ -4016,35 +4338,216 @@ function genExcel(type){
 // ══════════════════════════════════════════
 // MULTAS / INFRAÇÕES
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// REGRA DE NEGÓCIO REALTEC — TIPO 6 x TIPO 6A
+// ──────────────────────────────────────────────────────────────────────────
+// Na planilha, a coluna ITEM identifica o processo. "6" é a NOTIFICAÇÃO DE
+// AUTUAÇÃO (ainda sem boleto); "6A" é a MESMA infração já convertida em multa
+// com boleto emitido. Os dois registros são etapas do MESMO processo, não
+// multas diferentes: contá-los duas vezes inflaria indicadores e relatórios.
+//
+// Aqui tratamos os dois como um único "processo":
+//   · a numeração-base ("6") é a chave do processo;
+//   · registros sem numeração (cadastrados direto no sistema) são agrupados
+//     por placa + data + descrição, que é o que caracteriza a mesma infração;
+//   · o valor do processo é o do boleto quando existe, senão o da notificação.
+// Nada é apagado: as duas etapas continuam visíveis e com histórico próprio.
+// ══════════════════════════════════════════════════════════════════════════
+
+// Remove o sufixo de etapa: "6A" -> "6". Aceita 6B/6C caso a empresa passe a
+// registrar mais de uma etapa no futuro.
+function baseItemMulta(item){
+  return String(item==null?'':item).trim().toUpperCase().replace(/[A-Z]+$/,'');
+}
+// Tipo 6A: já existe boleto para pagamento.
+function ehBoletoMulta(m){
+  return /BOLETO/i.test(String(m&&m.tipo_documento||''));
+}
+// Tipo 6: notificação de autuação, ainda sem boleto.
+function ehNotificacaoMulta(m){ return !ehBoletoMulta(m); }
+
+// Rótulo curto exibido na tela: "6A" quando há numeração, senão o tipo.
+function rotuloEtapaMulta(m){
+  const item=String(m.item||'').trim();
+  return item?item:(ehBoletoMulta(m)?'6A':'6');
+}
+
+// Chave que identifica o processo (notificação + boleto compartilham a mesma).
+function chaveProcessoMulta(m){
+  const base=baseItemMulta(m.item);
+  if(base)return 'I:'+base;
+  return 'D:'+[normalizaPlaca(m.placa||''),String(m.data_infracao||''),
+    normalizaDescricaoInfracao(String(m.descricao_infracao||'')).toUpperCase()].join('|');
+}
+// Agrupa uma lista de multas em processos. Devolve um Map chave -> [registros].
+function agruparProcessosMulta(lista){
+  const mapa=new Map();
+  (lista||[]).forEach(m=>{
+    const k=chaveProcessoMulta(m);
+    if(!mapa.has(k))mapa.set(k,[]);
+    mapa.get(k).push(m);
+  });
+  return mapa;
+}
+// Valor financeiro real do processo: o boleto substitui a notificação.
+function valorProcessoMulta(registros){
+  const boleto=(registros||[]).find(m=>ehBoletoMulta(m)&&Number(m.valor)>0);
+  if(boleto)return Number(boleto.valor)||0;
+  return Math.max(0,...(registros||[]).map(m=>Number(m.valor)||0));
+}
+// Um processo está em aberto enquanto qualquer etapa continuar pendente.
+function processoEmAberto(registros){
+  return (registros||[]).some(m=>m.status==='pendente');
+}
+// Notificação (tipo 6) que ainda NÃO tem o boleto (6A) correspondente.
+function notificacaoSemBoleto(m,mapa){
+  if(!ehNotificacaoMulta(m))return false;
+  const irmaos=mapa.get(chaveProcessoMulta(m))||[];
+  return !irmaos.some(ehBoletoMulta);
+}
+// Condutor ainda não apurado — na planilha a empresa escreve "VERIFICAR".
+function condutorPendente(m){
+  const c=String(m.condutor_responsavel||'').trim().toUpperCase();
+  return !c||c==='VERIFICAR'||c==='-';
+}
+
+// ══════════════════════════════════════════
+// CAMPO CONDUTOR (autocomplete)
+// ──────────────────────────────────────────
+// Grava em `condutor_responsavel`, a mesma coluna que a planilha alimenta —
+// nenhuma estrutura nova foi criada. A lista de sugestões junta os motoristas
+// já cadastrados com os nomes que a empresa vem digitando nas multas, o que
+// deixa o campo pronto para a futura integração com o cadastro de colaboradores.
+// ══════════════════════════════════════════
+function preencherListaCondutores(){
+  const dl=document.getElementById('lista-condutores');
+  if(!dl)return;
+  const nomes=new Set();
+  cache.motoristas.filter(m=>m.status==='ativo').forEach(m=>{if(m.nome)nomes.add(String(m.nome).trim())});
+  (cache.multas||[]).forEach(m=>{
+    const c=String(m.condutor_responsavel||'').trim();
+    if(c&&c.toUpperCase()!=='VERIFICAR'&&c!=='-')nomes.add(c);
+  });
+  dl.innerHTML=[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR'))
+    .map(n=>`<option value="${h(n)}"></option>`).join('');
+}
+// Digitou um nome que existe no cadastro? Vincula o motorista automaticamente,
+// para que relatórios e alertas por motorista continuem funcionando.
+function vincularCondutorMotorista(){
+  const nome=String(document.getElementById('mu-condutor')?.value||'').trim().toUpperCase();
+  const sel=document.getElementById('mu-motor');
+  if(!sel||!nome)return;
+  const achado=cache.motoristas.find(m=>String(m.nome||'').trim().toUpperCase()===nome);
+  if(achado)sel.value=String(achado.id);
+}
+// Dica contextual sobre a etapa do processo (tipo 6 x 6A).
+function atualizaDicaDocMulta(){
+  const doc=document.getElementById('mu-doc')?.value||'';
+  const el=document.getElementById('mu-doc-dica');
+  if(!el)return;
+  el.textContent=doc==='BOLETO'
+    ? 'Multa já convertida, com boleto para pagamento.'
+    : 'Notificação de autuação — ainda sem boleto.';
+  el.style.color=doc==='BOLETO'?'var(--danger)':'var(--accent-light)';
+}
+
+// ══════════════════════════════════════════
+// EXCLUSÃO DE ANEXO
+// ──────────────────────────────────────────
+// Remove APENAS o arquivo, preservando todo o restante do registro: em edição,
+// grava de imediato anexo_url/anexo_nome = null (PATCH só desses dois campos)
+// e atualiza a tela na hora. Em cadastro novo, apenas limpa o formulário.
+// O arquivo permanece no Storage: o vínculo é desfeito, mas nada é destruído
+// de forma irreversível — importante para multas, que são documento fiscal.
+// ══════════════════════════════════════════
+const ANEXO_CFG={
+  multas:{url:'mu-anexo-url',nome:'mu-anexo-nome',file:'mu-anexo-file',atual:'mu-anexo-atual',
+    preview:'mu-anexo-preview',botao:'mu-anexo-del',editId:()=>multaEditId,cache:()=>cache.multas,render:renderMultas},
+  manutencoes:{url:'mn-anexo-url',nome:'mn-anexo-nome',file:'mn-anexo-file',atual:'mn-anexo-atual',
+    preview:'mn-anexo-preview',botao:'mn-anexo-del',editId:()=>manutEditId,cache:()=>cache.manutencoes,render:renderManut}
+};
+function excluirAnexo(tabela){
+  const cfg=ANEXO_CFG[tabela];
+  if(!cfg)return;
+  const temAlgo=(document.getElementById(cfg.url)?.value)||'';
+  if(!temAlgo){toast('Não há anexo para excluir.','info');return}
+  confirm2('Excluir anexo',
+    'O arquivo será desvinculado deste registro. Os demais dados permanecem intactos. Confirmar?',
+    async()=>{
+      const id=cfg.editId();
+      try{
+        if(id){
+          await sbPatch(tabela,id,{anexo_url:null,anexo_nome:null});
+          const lista=cfg.cache()||[];
+          const idx=lista.findIndex(x=>x.id==id);
+          if(idx>=0){lista[idx].anexo_url=null;lista[idx].anexo_nome=null}
+          registrarHistorico(tabela,id,'anexo_removido',{}).catch(()=>{});
+        }
+        limparCamposAnexo(cfg);
+        if(typeof cfg.render==='function')cfg.render();
+        toast('Anexo excluído. O restante do registro foi preservado.','success');
+      }catch(e){
+        toast('Não foi possível excluir o anexo: '+e.message,'error');
+      }
+    });
+}
+function limparCamposAnexo(cfg){
+  ['url','nome','file'].forEach(k=>{const el=document.getElementById(cfg[k]);if(el)el.value=''});
+  ['atual','preview'].forEach(k=>{const el=document.getElementById(cfg[k]);if(el)el.innerHTML=''});
+  const btn=document.getElementById(cfg.botao);
+  if(btn)btn.style.display='none';
+}
+// Mostra/oculta o botão conforme exista anexo salvo no registro aberto.
+function atualizaBotaoAnexo(tabela,temAnexo){
+  const cfg=ANEXO_CFG[tabela];
+  if(!cfg)return;
+  const btn=document.getElementById(cfg.botao);
+  if(btn)btn.style.display=temAnexo?'':'none';
+}
+
 function renderMultas(){
   const q=(document.getElementById('mt-search')?.value||'').toLowerCase();
   const st=document.getElementById('mt-status-f')?.value||'';
   const fr=document.getElementById('mt-from')?.value||'';
   const to=document.getElementById('mt-to')?.value||'';
+  const doc=document.getElementById('mt-doc-f')?.value||'';
+  const processos=agruparProcessosMulta(cache.multas||[]);
   let rows=(cache.multas||[]).filter(m=>{
     const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
     const mot=cache.motoristas.find(x=>x.id===m.motorista_id);
-    const matchQ=!q||(veic&&veic.placa?.toLowerCase().includes(q))||(mot&&mot.nome?.toLowerCase().includes(q))||(m.auto_numero?.toLowerCase().includes(q));
+    // Multas importadas da planilha guardam a placa em texto (m.placa) mesmo
+    // quando o veículo não foi vinculado. A busca precisa considerar as duas
+    // origens, senão digitar a placa não encontrava o registro que a própria
+    // tela exibe (e que o PDF/Excel já exportavam com a placa correta).
+    const placaEfetiva=(veic&&veic.placa)||m.placa||'';
+    const matchQ=!q||placaEfetiva.toLowerCase().includes(q)||(mot&&mot.nome?.toLowerCase().includes(q))||(m.auto_numero?.toLowerCase().includes(q))||(m.condutor_responsavel?.toLowerCase().includes(q))||String(m.item||'').toLowerCase()===q||(m.descricao_infracao?.toLowerCase().includes(q));
     const matchS=!st||m.status===st;
+    // Filtro da regra 6 / 6A
+    const matchD=!doc||(doc==='boleto'?ehBoletoMulta(m):doc==='notificacao'?ehNotificacaoMulta(m):notificacaoSemBoleto(m,processos));
     const d=m.data_infracao||'';
     const matchF=!fr||d>=fr;
     const matchT=!to||d<=to;
-    return matchQ&&matchS&&matchF&&matchT;
+    return matchQ&&matchS&&matchD&&matchF&&matchT;
   });
   const tb=document.getElementById('multas-body');
   if(!tb)return;
   // KPIs
   const all=cache.multas||[];
-  const pend=all.filter(m=>m.status==='pendente');
-  const pagas=all.filter(m=>m.status==='paga');
-  const totalValor=pend.reduce((s,m)=>s+(Number(m.valor)||0),0);
+  // Indicadores contam PROCESSOS: um par 6 + 6A é uma infração só. Sem isso o
+  // total e o valor apareciam dobrados assim que o boleto era lançado.
+  const grupos=[...processos.values()];
+  const abertos=grupos.filter(processoEmAberto);
+  const quitados=grupos.filter(g=>g.some(m=>m.status==='paga'));
+  const totalValor=abertos.reduce((s,g)=>s+valorProcessoMulta(g),0);
   const km=id=>document.getElementById(id);
-  if(km('km-total'))km('km-total').textContent=all.length;
-  if(km('km-pend'))km('km-pend').textContent=pend.length;
-  if(km('km-pagas'))km('km-pagas').textContent=pagas.length;
+  if(km('km-total'))km('km-total').textContent=grupos.length;
+  if(km('km-pend'))km('km-pend').textContent=abertos.length;
+  if(km('km-pagas'))km('km-pagas').textContent=quitados.length;
   if(km('km-valor'))km('km-valor').textContent=fmt$(totalValor);
+  const subTotal=document.getElementById('km-total-sub');
+  if(subTotal)subTotal.textContent=`${all.length} lançamentos (6 + 6A)`;
   // Table
-  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="12">Nenhuma multa registrada</td></tr>';return}
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="13">Nenhuma multa registrada</td></tr>';return}
   const stMap={pendente:'badge-manutencao',paga:'badge-ativo',recurso:'badge-blue',cancelada:'badge-gray'};
   const tipoMap={velocidade:'Velocidade',sinal:'Sinal',estacionamento:'Estacionamento',documentacao:'Documentação',alcool:'Alcoolemia',celular:'Celular',cinto:'Cinto',conversao:'Conversão',contramao:'Contramão',ultrapassagem:'Ultrapassagem',faixa_onibus:'Faixa de Ônibus',rodizio:'Rodízio',pedagio:'Pedágio',zona_azul:'Zona Azul',nao_indicacao_condutor:'Não Indicação de Condutor',carga:'Carga',outros:'Outros'};
   tb.innerHTML=rows.map(m=>{
@@ -4052,19 +4555,22 @@ function renderMultas(){
     const mot=cache.motoristas.find(x=>x.id===m.motorista_id);
     const venc=m.vencimento_pagamento;
     const isVencida=venc&&m.status==='pendente'&&dateSafe(venc)<new Date();
-    // Fallback: registros antigos/importados não têm tipo_infracao preenchido,
-    // apenas descricao_infracao (texto livre). Normalizamos duplicatas textuais conhecidas
-    // (ex.: "não indicação" vs "não identificação" de condutor são a mesma infração)
-    // e exibimos o que existir, sem cair em "—".
     const descNorm=normalizaDescricaoInfracao(m.descricao_infracao);
     const tipoLabel=tipoMap[m.tipo_infracao]||h(m.tipo_infracao||'')||h(descNorm||'')||'Outros';
     const autoOuLocal=m.auto_numero||m.local_infracao||descNorm||'—';
     const temAnexo=!!(m.anexo_url);
+    // Etapa do processo: 6 = notificação, 6A = já com boleto.
+    const boleto=ehBoletoMulta(m);
+    const semBoleto=notificacaoSemBoleto(m,processos);
+    const condutor=(mot&&mot.nome)||(m.condutor_responsavel&&!condutorPendente(m)?m.condutor_responsavel:'');
     return `<tr>
       <td>${fmtDate(m.data_infracao)}</td>
-      <td><strong style="color:var(--text-primary)">${h(veic?veic.placa:'—')}</strong></td>
+      <td style="white-space:nowrap">
+        <span class="badge ${boleto?'badge-multa-pend':'badge-blue'}" title="${boleto?'Tipo 6A — multa com boleto emitido':'Tipo 6 — notificação de autuação, ainda sem boleto'}">${h(rotuloEtapaMulta(m))} · ${boleto?'Boleto':'Notif.'}</span>
+      </td>
+      <td><strong style="color:var(--text-primary)">${h(veic?veic.placa:(m.placa||'—'))}</strong></td>
       <td>${h(veic?veic.modelo:(m.modelo_veiculo||'—'))}</td>
-      <td>${h(mot?mot.nome:(m.condutor_responsavel&&m.condutor_responsavel!=='VERIFICAR'?m.condutor_responsavel:'—'))}</td>
+      <td>${condutor?h(condutor):'<span class="badge badge-low" title="Condutor ainda não indicado">a indicar</span>'}</td>
       <td><span class="badge badge-blue" title="${h(descNorm||'')}">${tipoLabel}</span></td>
       <td style="font-size:.72rem;color:var(--text-muted)" title="${h(autoOuLocal)}">${h(autoOuLocal.length>22?autoOuLocal.slice(0,22)+'…':autoOuLocal)}</td>
       <td><span style="color:${(m.pontos>=7)?'#ef9a9a':(m.pontos>=5)?'#ffb74d':'var(--text-secondary)'}">${h(m.pontos||0)} pts</span></td>
@@ -4073,6 +4579,7 @@ function renderMultas(){
       <td><span class="badge ${stMap[m.status]||'badge-gray'}">${h(m.status||'—')}</span></td>
       <td style="text-align:center">${temAnexo?`<button onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" title="${h(m.anexo_nome||'Ver anexo')}" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--accent)">📎</button>`:'<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="white-space:nowrap">
+        ${semBoleto?`<button class="icon-btn" onclick="converterEmBoleto('${idAttr(m.id)}')" title="Recebeu o boleto? Gerar o Tipo 6A deste processo" style="color:var(--warning)">6A</button>`:''}
         <button class="icon-btn e" onclick="editMulta('${idAttr(m.id)}')" title="Editar">✏</button>
         <button class="icon-btn d" onclick="delMulta('${idAttr(m.id)}')" title="Excluir">✕</button>
       </td>
@@ -4080,9 +4587,40 @@ function renderMultas(){
   }).join('');
 }
 
+// ── Evolução 6 → 6A ──
+// Recebido o boleto, a notificação NÃO é apagada nem duplicada: abrimos um
+// novo lançamento já preenchido com os dados da notificação, marcado como
+// BOLETO e com o item "6A". As duas etapas ficam ligadas pela numeração-base,
+// preservando todo o histórico do processo.
+function converterEmBoleto(id){
+  const orig=(cache.multas||[]).find(x=>x.id==id);
+  if(!orig){toast('Notificação não encontrada.','error');return}
+  const base=baseItemMulta(orig.item)||String(orig.item||'').trim();
+  confirm2('Converter em multa com boleto',
+    `A notificação ${base?'nº '+base:''} passará a ter também o lançamento Tipo 6A (com boleto). A notificação original é preservada. Confirmar?`,
+    ()=>{
+      openMultaModal({
+        ...orig,
+        id:null,
+        item:base?base+'A':'',
+        tipo_documento:'BOLETO',
+        valor:'',
+        vencimento_pagamento:'',
+        anexo_url:null,
+        anexo_nome:null,
+        status:'pendente'
+      });
+      // openMultaModal usa o id para decidir entre novo/edição; sem id ele abre
+      // como cadastro novo, que é exatamente o que queremos aqui.
+      multaEditId=null;
+      document.getElementById('m-multa-title').textContent='Nova Multa com Boleto (Tipo 6A)';
+      toast('Confira o valor e o vencimento do boleto antes de salvar.','info');
+    });
+}
+
 function limparFiltrosMulta(){
   ['mt-search','mt-from','mt-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
-  document.getElementById('mt-status-f').value='';
+  ['mt-status-f','mt-doc-f'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   renderMultas();
 }
 
@@ -4090,7 +4628,10 @@ let multaEditId=null;
 function openMultaModal(m=null){
   multaEditId=null;
   document.getElementById('m-multa-title').textContent='Nova Multa / Infração';
-  ['mu-id','mu-auto','mu-orgao','mu-local','mu-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['mu-id','mu-auto','mu-orgao','mu-local','mu-obs','mu-item','mu-condutor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('mu-doc').value='NOTIFICAÇÃO';
+  preencherListaCondutores();
+  atualizaBotaoAnexo('multas',false);
   document.getElementById('mu-data').value=today();
   document.getElementById('mu-tipo').value='';
   document.getElementById('mu-pontos').value='3';
@@ -4103,9 +4644,10 @@ function openMultaModal(m=null){
   document.getElementById('mu-anexo-nome').value='';
   document.getElementById('mu-anexo-atual').innerHTML='';
   document.getElementById('mu-anexo-preview').innerHTML='';
-  // populate selects
-  const veicSel=document.getElementById('mu-veic');
-  veicSel.innerHTML='<option value="">Selecione...</option>'+cache.veiculos.map(v=>`<option value="${idAttr(v.id)}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
+  // populate selects — usam os mesmos helpers dos demais modais, em vez de
+  // montar o <select> à mão (a duplicação era a razão de este modal não
+  // preservar vínculos com cadastros inativos).
+  populateVeicSelect('mu-veic','Selecione...', m?m.veiculo_id:'');
   // Preserva motorista atual mesmo se inativo (edição de registros antigos)
   populateMotorSelect('mu-motor','— Não identificado —', m?.motorista_id);
   if(m){
@@ -4124,12 +4666,19 @@ function openMultaModal(m=null){
     document.getElementById('mu-datapag').value=m.data_pagamento||'';
     document.getElementById('mu-local').value=m.local_infracao||'';
     document.getElementById('mu-obs').value=m.observacoes||'';
+    document.getElementById('mu-item').value=m.item||'';
+    document.getElementById('mu-doc').value=ehBoletoMulta(m)?'BOLETO':'NOTIFICAÇÃO';
+    // "VERIFICAR" da planilha significa "ainda não apurado": não repetimos essa
+    // marcação no campo, para o usuário ver claramente que falta preencher.
+    document.getElementById('mu-condutor').value=condutorPendente(m)?'':(m.condutor_responsavel||'');
     if(m.anexo_url){
       document.getElementById('mu-anexo-url').value=m.anexo_url;
       document.getElementById('mu-anexo-nome').value=m.anexo_nome||'';
       document.getElementById('mu-anexo-atual').innerHTML=`📎 Anexo atual: <a href="javascript:void(0)" onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" style="color:var(--accent)">${h(m.anexo_nome||'ver arquivo')}</a> (envie um novo arquivo para substituir)`;
+      atualizaBotaoAnexo('multas',true);
     }
   }
+  atualizaDicaDocMulta();
   document.getElementById('m-multa').classList.add('open');
 }
 function closeMultaModal(){document.getElementById('m-multa').classList.remove('open')}
@@ -4145,11 +4694,15 @@ async function saveMulta(){
   const statusMu=document.getElementById('mu-status').value;
   const auto=document.getElementById('mu-auto').value.trim();
   const pontosMu=document.getElementById('mu-pontos').value;
+  const docMu=document.getElementById('mu-doc').value||'NOTIFICAÇÃO';
+  const itemMu=document.getElementById('mu-item').value.trim().toUpperCase();
+  const condutorMu=document.getElementById('mu-condutor').value.trim();
   if(!validar([
     [!veicId,'Selecione o veículo'],
-    [!tipo,'Selecione o tipo de infração'],
-    [!valor,'Informe o valor da multa'],
-    [Number(valor)<=0,'O valor da multa deve ser maior que zero.'],
+    // "Tipo de Infração" saiu da interface a pedido da Realtec: deixou de ser
+    // obrigatório. A descrição da infração continua sendo a informação usada.
+    [docMu==='BOLETO'&&!valor,'Multa com boleto: informe o valor.'],
+    [valor!==''&&Number(valor)<0,'O valor da multa não pode ser negativo.'],
     [!ehInteiroEntre(pontosMu,0,10),'Pontos na CNH devem estar entre 0 e 10.'],
     [!ehDataValida(dataInfr),'Data da infração inválida.'],
     [ehDataFutura(dataInfr),'A data da infração não pode estar no futuro.'],
@@ -4158,10 +4711,12 @@ async function saveMulta(){
     [!ehDataValida(dataPag),'Data de pagamento inválida.'],
     [ehDataFutura(dataPag),'A data de pagamento não pode estar no futuro.'],
     [dataPag&&dataInfr&&diasEntre(dataInfr,dataPag)<0,'O pagamento não pode ser anterior à data da infração.'],
-    // Coerência entre status e data de pagamento: sem isso o relatório
-    // financeiro mostrava multas "pagas" sem nenhuma data de quitação.
-    [statusMu==='paga'&&!dataPag,'Multa marcada como paga: informe a data de pagamento.'],
-    [statusMu!=='paga'&&!!dataPag,'Há data de pagamento preenchida, mas o status não é "Paga". Ajuste um dos dois.'],
+    // As duas regras que exigiam/proibiam a Data de Pagamento foram retiradas:
+    // o campo saiu da interface a pedido da Realtec, então elas travariam o
+    // formulário pedindo algo que o usuário não tem mais como preencher.
+    // A coerência passou a ser garantida automaticamente no payload abaixo:
+    // ao marcar como "paga" sem data, o sistema grava a data de hoje.
+    // Nenhuma data já existente é apagada.
     [auto&&existeDuplicado(cache.multas,'auto_numero',auto,multaEditId),
      `Já existe uma multa registrada com o auto de infração ${auto}.`]
   ]))return;
@@ -4182,6 +4737,9 @@ async function saveMulta(){
     }
   }
   const data={
+    item:itemMu||null,
+    tipo_documento:docMu,
+    condutor_responsavel:condutorMu||null,
     data_infracao:document.getElementById('mu-data').value||null,
     veiculo_id:veicId,
     motorista_id:document.getElementById('mu-motor').value||null,
@@ -4192,7 +4750,7 @@ async function saveMulta(){
     valor:Number(valor)||0,
     vencimento_pagamento:document.getElementById('mu-venc').value||null,
     status:document.getElementById('mu-status').value,
-    data_pagamento:document.getElementById('mu-datapag').value||null,
+    data_pagamento:(statusMu==='paga'?(dataPag||today()):(dataPag||null)),
     local_infracao:document.getElementById('mu-local').value,
     observacoes:document.getElementById('mu-obs').value,
     anexo_url:anexoUrl,
@@ -4204,7 +4762,7 @@ async function saveMulta(){
       const antes=cache.multas.find(x=>x.id==multaEditId);
       await sbPatch('multas',multaEditId,data);
       const idx=cache.multas.findIndex(x=>x.id==multaEditId);
-      if(idx>=0)cache.multas[idx]={...cache.multas[idx],...data};
+      if(idx>=0)cache.multas[idx]=normIds({...cache.multas[idx],...data});
       registrarHistorico('multas',multaEditId,'edicao',{antes,depois:data}).catch(()=>{});
       toast('Multa atualizada!','success');
     }else{
@@ -4214,7 +4772,7 @@ async function saveMulta(){
       registrarHistorico('multas',nova.id,'criacao',{depois:data}).catch(()=>{});
       toast('Multa registrada!','success');
     }
-    closeMultaModal();renderMultas();updBadge();
+    closeMultaModal();renderMultas();updBadge();renderDash();
     if(anexoFalhou)toast('O anexo não pôde ser enviado: '+anexoErroMsg,'warning');
   }catch(e){
     const colunaFaltante=detectarColunaFaltante(e.message);
@@ -4225,12 +4783,12 @@ async function saveMulta(){
         if(multaEditId){
           await sbPatch('multas',multaEditId,dataSemColuna);
           const idx=cache.multas.findIndex(x=>x.id==multaEditId);
-          if(idx>=0)cache.multas[idx]={...cache.multas[idx],...dataSemColuna};
+          if(idx>=0)cache.multas[idx]=normIds({...cache.multas[idx],...dataSemColuna});
         }else{
           const res=await sbPost('multas',dataSemColuna);
           cache.multas.unshift(normIds(Array.isArray(res)?res[0]:{...dataSemColuna,id:uid()}));
         }
-        closeMultaModal();renderMultas();updBadge();
+        closeMultaModal();renderMultas();updBadge();renderDash();
         toast(`Salvo, mas o campo "${colunaFaltante}" não foi gravado: rode a migração no banco para habilitar esse campo.`,'warning');
       }catch(e2){
         console.error('saveMulta (retry) error:',e2);
@@ -4247,7 +4805,7 @@ async function delMulta(id){
     try{
       await softDelete('multas',id,'Exclusão manual pelo usuário');
       cache.multas=(cache.multas||[]).filter(x=>x.id!=id);
-      renderMultas();updBadge();toast('Multa removida.','info');
+      renderMultas();updBadge();renderDash();toast('Multa removida.','info');
     }catch(e){toast('Erro: '+e.message,'error')}
   });
 }
@@ -4342,13 +4900,14 @@ function openOSModal(o=null){
   document.getElementById('os-previsao').value='';
   document.getElementById('os-conclusao').value='';
   document.getElementById('os-numero').value=gerarNumeroOS();
-  // populate selects
-  const veicSel=document.getElementById('os-veic');
-  veicSel.innerHTML='<option value="">Selecione...</option>'+cache.veiculos.map(v=>`<option value="${idAttr(v.id)}">${h(v.placa)} — ${h(v.modelo)}</option>`).join('');
-  const motorSel=document.getElementById('os-motorista');
-  motorSel.innerHTML='<option value="">— Nenhum —</option>'+cache.motoristas.filter(x=>x.status==='ativo').map(m=>`<option value="${idAttr(m.id)}">${h(m.nome)}</option>`).join('');
-  const obraSel=document.getElementById('os-obra');
-  obraSel.innerHTML='<option value="">— Sem obra —</option>'+cache.obras.map(ob=>`<option value="${idAttr(ob.id)}">${h(ob.codigo?ob.codigo+' - ':'')}${h(ob.nome)}</option>`).join('');
+  // populate selects — mesma lógica compartilhada dos demais modais.
+  // Além de eliminar a duplicação, isso corrige um comportamento real: ao
+  // editar uma OS antiga cujo motorista foi desativado (ou cuja obra foi
+  // concluída), o select não listava mais aquele registro e o vínculo era
+  // perdido silenciosamente ao salvar.
+  populateVeicSelect('os-veic','Selecione...', o?o.veiculo_id:'');
+  populateMotorSelect('os-motorista','— Nenhum —', o?o.motorista_id:'');
+  populateObraSelect('os-obra', o?o.obra_id:'');
   if(o){
     osEditId=o.id;
     document.getElementById('m-os-title').textContent='Editar OS — '+o.numero;
@@ -4441,7 +5000,7 @@ async function saveOS(){
       const antes=cache.ordens.find(x=>x.id==osEditId);
       await sbPatch('ordens_servico',osEditId,data);
       const idx=cache.ordens.findIndex(x=>x.id==osEditId);
-      if(idx>=0)cache.ordens[idx]={...cache.ordens[idx],...data};
+      if(idx>=0)cache.ordens[idx]=normIds({...cache.ordens[idx],...data});
       registrarHistorico('ordens_servico',osEditId,'edicao',{antes,depois:data}).catch(()=>{});
       registroFinal=cache.ordens[idx];
       toast('OS atualizada!','success');
@@ -4453,7 +5012,7 @@ async function saveOS(){
       registroFinal=nova;
       toast('OS registrada! Nº: '+data.numero,'success');
     }
-    closeOSModal();renderOS();
+    closeOSModal();renderOS();renderDash();
     return registroFinal;
   }catch(e){toast('Erro ao salvar OS: '+e.message,'error');return null}
 }
@@ -4470,7 +5029,7 @@ async function delOS(id){
     try{
       await softDelete('ordens_servico',id,'Exclusão manual pelo usuário');
       cache.ordens=(cache.ordens||[]).filter(x=>x.id!=id);
-      renderOS();toast('OS removida.','info');
+      renderOS();renderDash();toast('OS removida.','info');
     }catch(e){toast('Erro: '+e.message,'error')}
   });
 }
@@ -4659,17 +5218,19 @@ function gerarPDFOS(osData){
 // do banco antigo. Roda primeiro para que multas/manutenções já saiam
 // vinculadas (veiculo_id) aos veículos corretos.
 const veiculosSeed=[
-  {placa:'UFJ8D74',modelo:'OROCH INTENSE 1.6 SCE',tipo:'caminhao',ano:'2026',km_atual:0,combustivel:'flex',status:'ativo'},
-  {placa:'SWJ9J25',modelo:'OROCH INTENSE 1.6 SCE',tipo:'caminhonete',ano:'2024',km_atual:54352,combustivel:'flex',status:'ativo'},
-  {placa:'SVC3I13',modelo:'OROCH INTENSE 1.6 SCE',tipo:'caminhonete',ano:'2024',km_atual:39216,combustivel:'flex',status:'ativo'},
-  {placa:'GKH4I27',modelo:'GOL',tipo:'carro',ano:'2022',km_atual:173838,combustivel:'flex',status:'ativo'},
-  {placa:'GFZ6J44',modelo:'TRAILER',tipo:'maquina',ano:'2016',km_atual:0,combustivel:'eletrico',status:'ativo'},
-  {placa:'FQJ5E94',modelo:'AMAROK CD 4X4 S',tipo:'caminhonete',ano:'2013',km_atual:120000,combustivel:'diesel',status:'manutencao'},
-  {placa:'FQE3D43',modelo:'OROCH INTENSE 1.6 SCE',tipo:'caminhonete',ano:'2023',km_atual:109913,combustivel:'flex',status:'ativo'},
-  {placa:'FCP9A22',modelo:'GOL MPI',tipo:'carro',ano:'2022',km_atual:116663,combustivel:'flex',status:'ativo'},
-  {placa:'EYM3A94',modelo:'MASTER CC 2.5DCI',tipo:'caminhao',ano:'2012',km_atual:150000,combustivel:'diesel',status:'ativo'},
-  {placa:'EXJ1B06',modelo:'KA HATCH SE PLUS 1.0',tipo:'carro',ano:'2019',km_atual:100800,combustivel:'flex',status:'ativo'},
-  {placa:'DQG9038',modelo:'PALIO FIRE FLEX',tipo:'carro',ano:'2005',km_atual:110000,combustivel:'flex',status:'ativo'},
+  {placa:'EMPILHADEIRA',modelo:'H55XM',marca:'HYSTER',ano:null,renavam:null,cor:'Amarela',tipo:'maquina',km_atual:0,combustivel:'diesel',status:'ativo'},
+  {placa:'DQG9038',modelo:'PALIO FIRE FLEX',marca:'FIAT',ano:'2005',renavam:'868092487',cor:'Prata',tipo:'carro',km_atual:110000,combustivel:'flex',status:'ativo'},
+  {placa:'EXJ1B06',modelo:'KA HATCH SE PLUS 1.0',marca:'FORD',ano:'2019',renavam:'1204146885',cor:'Cinza',tipo:'carro',km_atual:100800,combustivel:'flex',status:'ativo'},
+  {placa:'EYM3A94',modelo:'MASTER CC 2.5DCI',marca:'RENAULT',ano:'2012',renavam:'486401928',cor:'Branco',tipo:'caminhao',km_atual:150000,combustivel:'diesel',status:'ativo'},
+  {placa:'UOW2A24',modelo:'BONGO',marca:'KIA',ano:null,renavam:null,cor:'Branco',tipo:'caminhao',km_atual:0,combustivel:'diesel',status:'ativo'},
+  {placa:'FCP9A22',modelo:'GOL MPI',marca:'VOLKSWAGEN',ano:'2022',renavam:'1297127258',cor:'Branco',tipo:'carro',km_atual:116663,combustivel:'flex',status:'ativo'},
+  {placa:'FQE3D43',modelo:'OROCH INTENSE 1.6 SCE',marca:'RENAULT',ano:'2023',renavam:'13344169192',cor:'Branco',tipo:'caminhonete',km_atual:109913,combustivel:'flex',status:'ativo'},
+  {placa:'FQJ5E94',modelo:'AMAROK CD 4X4 S',marca:'VOLKSWAGEN',ano:'2013',renavam:'1001715486',cor:'Branca',tipo:'caminhonete',km_atual:120000,combustivel:'diesel',status:'manutencao'},
+  {placa:'GFZ6J44',modelo:'TRAILER',marca:'R/DELTA MG04',ano:'2016',renavam:'1107179286',cor:'Branca',tipo:'maquina',km_atual:0,combustivel:'eletrico',status:'ativo'},
+  {placa:'GKH4I27',modelo:'GOL',marca:'VOLKSWAGEN',ano:'2022',renavam:'1297127320',cor:'Branco',tipo:'carro',km_atual:173838,combustivel:'flex',status:'ativo'},
+  {placa:'SVC3I13',modelo:'OROCH INTENSE 1.6 SCE',marca:'RENAULT',ano:'2024',renavam:'1402714367',cor:'Preto',tipo:'caminhonete',km_atual:39216,combustivel:'flex',status:'ativo'},
+  {placa:'SWJ9J25',modelo:'OROCH',marca:'RENAULT',ano:'2024',renavam:'1402714251',cor:'Branco',tipo:'caminhonete',km_atual:54352,combustivel:'flex',status:'ativo'},
+  {placa:'UFJ8D74',modelo:'OROCH',marca:'RENAULT',ano:'2026',renavam:'1492427630',cor:'Cinza',tipo:'caminhonete',km_atual:0,combustivel:'flex',status:'ativo'},
 ];
 async function seedVeiculosData(){
   // Usa a contagem BRUTA vinda do banco (inclui registros com exclusão lógica).
@@ -4708,60 +5269,129 @@ async function seedPlanilhaData(){
   toast('Importando dados da planilha...','info');
 
   const multasSeed=[
-    {data_infracao:'2025-11-17',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'RIBEIRÃO PRETO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2025-11-24',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2025-12-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'SÃO CAETANO DO SUL - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2025-12-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'SANTO ANDRÉ - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2025-12-30',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'SÃO CAETANO DO SUL - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'CRUZEIRO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'SÃO PAULO - SP',valor:195.23,tipo_doc:'BOLETO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-12',placa:'SVC3I13',modelo:'OROCH',pontos:5,descricao:'EVADIR-SE DE PEDÁGIO',local:'PINDAMONHANGABA - SP',valor:195.23,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'ROGÉRIO',status:'pendente'},
-    {data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:104.13,tipo_doc:'BOLETO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-20',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'BOLETO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',local:'SÃO PAULO - SP',valor:293.47,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'AVANÇAR SINAL VERMELHO',local:'SANTO ANDRÉ - SP',valor:293.47,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'MAYCON',status:'pendente'},
-    {data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',local:'SÃO CAETANO DO SUL - SP',valor:195.23,tipo_doc:'BOLETO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',local:'SÃO PAULO - SP',valor:293.47,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-03-09',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR',local:'MAUA - SP',valor:586.94,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR',local:'SÃO CAETANO DO SUL - SP',valor:260.32,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',local:'SÃO PAULO - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',local:'SANTO ANDRÉ - SP',valor:195.23,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-04-07',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO IDENTIFICAÇÃO DE CONDUTOR',local:'PINDAMONHANGABA - SP',valor:390.46,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'ROGÉRIO',status:'pendente'},
-    {data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',local:'SANTO ANDRÉ - SP',valor:195.23,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR',local:'SANTO ANDRÉ - SP',valor:586.94,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'MAYCON',status:'pendente'},
-    {data_infracao:'2026-05-04',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR',local:'MAUA - SP',valor:586.94,tipo_doc:'BOLETO',data_pagamento:null,condutor:'VERIFICAR',status:'pendente'},
-    {data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',local:'MIRACATU - SP',valor:130.16,tipo_doc:'NOTIFICAÇÃO',data_pagamento:null,condutor:'ROGÉRIO',status:'pendente'},
+    {item:'1',data_infracao:'2025-11-17',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'RIBEIRÃO PRETO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'2',data_infracao:'2025-11-24',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'3',data_infracao:'2025-12-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO CAETANO DO SUL - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'4',data_infracao:'2025-12-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SANTO ANDRÉ - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'5',data_infracao:'2025-12-30',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO CAETANO DO SUL - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'6',data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CRUZEIRO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'6A',data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CRUZEIRO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-10-09',condutor:'VERIFICAR'},
+    {item:'7',data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'7A',data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-05-20',condutor:'VERIFICAR'},
+    {item:'8',data_infracao:'2026-01-12',placa:'SVC3I13',modelo:'OROCH',pontos:5,descricao:'EVADIR-SE DE PEDÁGIO',cidade:'PINDAMONHANGABA - SP',valor:195.23,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+    {item:'9',data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'9A',data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:104.13,doc:'BOLETO',vencimento:'2026-05-25',condutor:'VERIFICAR'},
+    {item:'10',data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'10A',data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'BOLETO',vencimento:'2026-05-27',condutor:'VERIFICAR'},
+    {item:'11',data_infracao:'2026-01-20',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-01',condutor:'VERIFICAR'},
+    {item:'12',data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'12A',data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
+    {item:'13',data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'13A',data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
+    {item:'14',data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'14A',data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'BOLETO',vencimento:'2026-06-15',condutor:'VERIFICAR'},
+    {item:'15',data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'AVANÇAR SINAL VERMELHO',cidade:'SANTO ANDRÉ - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+    {item:'15A',data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'AVANÇAR SINAL VERMELHO',cidade:'SANTO ANDRÉ - SP',valor:0.0,doc:'BOLETO',vencimento:'2026-06-01',condutor:'MAYCON'},
+    {item:'16',data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'16A',data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-24',condutor:'VERIFICAR'},
+    {item:'17',data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SÃO CAETANO DO SUL - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'17A',data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SÃO CAETANO DO SUL - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
+    {item:'18',data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'18A',data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-03',condutor:'VERIFICAR'},
+    {item:'19',data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'19A',data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'BOLETO',vencimento:'2026-06-29',condutor:'VERIFICAR'},
+    {item:'20',data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'20A',data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-07-03',condutor:'VERIFICAR'},
+    {item:'21',data_infracao:'2026-03-09',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (16/10/25)',cidade:'MAUA - SP',valor:586.94,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'22',data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (13/10/25)',cidade:'SÃO CAETANO DO SUL - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'22A',data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (13/10/25)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'BOLETO',vencimento:'2026-06-22',condutor:'VERIFICAR'},
+    {item:'23',data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'23A',data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-05',condutor:'VERIFICAR'},
+    {item:'24',data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'24A',data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-12',condutor:'VERIFICAR'},
+    {item:'25',data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'25A',data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-07-24',condutor:'VERIFICAR'},
+    {item:'26',data_infracao:'2026-04-07',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO IDENTIFICAÇÃO DE CONDUTOR (12/01/26)',cidade:'PINDAMONHANGABA - SP',valor:390.46,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+    {item:'27',data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'27A',data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-07-24',condutor:'VERIFICAR'},
+    {item:'28',data_infracao:'2026-04-27',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/11/25)',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+    {item:'28A',data_infracao:'2026-04-27',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/11/25)',cidade:'SANTO ANDRÉ - SP',valor:260.32,doc:'BOLETO',vencimento:'2026-07-29',condutor:'MAYCON'},
+    {item:'29',data_infracao:'2026-04-28',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+    {item:'30',data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'MIRACATU- SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+    {item:'30A',data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'MIRACATU- SP',valor:260.32,doc:'BOLETO',vencimento:null,condutor:'ROGÉRIO'},
+    {item:'31',data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (04/02/26)',cidade:'SANTO ANDRÉ - SP',valor:586.94,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+    {item:'32',data_infracao:'2026-05-04',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (16/10/25)',cidade:'MAUA - SP',valor:586.94,doc:'BOLETO',vencimento:'2026-06-23',condutor:'VERIFICAR'},
+    {item:'33',data_infracao:'2026-05-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'ROBEIRÃO PRETO - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'34',data_infracao:'2026-05-12',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'35',data_infracao:'2026-05-12',placa:'EYM3A94',modelo:'MASTER',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'36',data_infracao:'2026-05-15',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'MAUA - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'37',data_infracao:'2026-05-15',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'MAUA - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'38',data_infracao:'2026-05-18',placa:'FQJ5E94',modelo:'AMAROK',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CARAPICUIBA - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'39',data_infracao:'2026-05-19',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'40',data_infracao:'2026-05-20',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (31/12/25)',cidade:'SANTO ANDRÉ - SP',valor:390.46,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+    {item:'41',data_infracao:'2026-05-20',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'42',data_infracao:'2026-05-25',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (21/12/25)',cidade:'SANTO ANDRÉ - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'43',data_infracao:'2026-05-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'44',data_infracao:'2026-06-01',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (12/01/26)',cidade:'PINDAMONHANGABA - SP',valor:390.46,doc:'BOLETO',vencimento:'2026-07-13',condutor:'ROGÉRIO'},
+    {item:'45',data_infracao:'2026-06-02',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'46',data_infracao:'2026-06-08',placa:'DQG9038',modelo:'PALIO',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO B. DO CAMPO -SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'47',data_infracao:'2026-06-09',placa:'EXJ1B06',modelo:'KA',pontos:4,descricao:'TRANSITAR C/ LAMPADAS QUEIMADAS',cidade:'SANTO ANDRÉ - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'48',data_infracao:'2026-06-24',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (01/04/2026)',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'49',data_infracao:'2026-06-29',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/04/2026)',cidade:'SANTO ANDRÉ - SP',valor:390.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+    {item:'50',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (26/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
+    {item:'51',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (27/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
+    {item:'52',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (30/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
+    {item:'53',data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (30/12/2025)',cidade:'SANTO ANDRÉ - SP',valor:586.94,doc:'BOLETO',vencimento:'2026-08-13',condutor:'MAYCON'},
+    {item:'54',data_infracao:'2026-05-16',placa:'UFJ8D74',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO LOURENÇO DA SERRA- SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
   ];
 
+
   const manutSeed=[
-    {data:'2026-01-14',placa:'EYM3A94',servico:'MANUTENÇÃO GERAL - RETIFICA DE MOTOR, ETC',fornecedor:'CRISTIANO ADRIANO FERREIRA MECANICA ME',cnpj:'20.156.433/0001-48',custo_preventiva:0,custo_corretiva:25000,tipo:'corretiva',observacao:'ESPECIFICAÇÃO TOTAL NA NF'},
-    {data:'2026-01-23',placa:'GKH4I27',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS',fornecedor:'ROBERTO CARLOS THOME MECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:3185,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-01-23',placa:'GKH4I27',servico:'FUNILARIA E PINTURA LATERAL DIREITA',fornecedor:'RISCO CAR FUNILARIA',cnpj:'',custo_preventiva:0,custo_corretiva:3000,tipo:'corretiva',observacao:'RECIBO'},
-    {data:'2026-01-06',placa:'SWJ9J25',servico:'TROCA DE PEÇAS REF. EMBREAGEM DEFEITUOSA',fornecedor:'LEAUTO PARIS LTDA',cnpj:'31.861.115/0005-28',custo_preventiva:0,custo_corretiva:3448.12,tipo:'corretiva',observacao:'REEMBOLSO MAYCON'},
-    {data:'2026-01-06',placa:'SWJ9J25',servico:'MÃO DE OBRA - EMBREAGEM',fornecedor:'LEAUTO PARIS LTDA',cnpj:'31.861.115/0005-28',custo_preventiva:0,custo_corretiva:350,tipo:'corretiva',observacao:'REEMBOLSO MAYCON'},
-    {data:'2026-01-23',placa:'GKH4I27',servico:'TROCA DE PNEUS',fornecedor:'KD PNEUS LTDA',cnpj:'11.763.081/0001-06',custo_preventiva:1545.01,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-01-26',placa:'GKH4I27',servico:'BALANCEAMENTO E ALINHAMENTO',fornecedor:'KD PNEUS LTDA',cnpj:'11.763.081/0001-06',custo_preventiva:309,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-01-27',placa:'FQE3D43',servico:'REVISÃO COMPLETA E TROCA DE ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:898.34,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-01-27',placa:'FQE3D43',servico:'MÃO DE OBRA - REVISÃO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:919.46,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-01-28',placa:'FQE3D43',servico:'TROCA DE PEÇAS C/ DEFEITO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:0,custo_corretiva:2197.66,tipo:'corretiva',observacao:''},
-    {data:'2026-01-28',placa:'FQE3D43',servico:'MÃO DE OBRA - TROCA PEÇAS',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:0,custo_corretiva:380,tipo:'corretiva',observacao:''},
-    {data:'2026-02-04',placa:'EXJ1B06',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME MECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:243,custo_corretiva:1034,tipo:'corretiva',observacao:''},
-    {data:'2026-02-19',placa:'FCP9A22',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME MECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:3203,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-04-16',placa:'SWJ9J25',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:3075.66,custo_corretiva:0,tipo:'preventiva',observacao:'REEMBOLSO MAYCON'},
-    {data:'2026-05-05',placa:'SVC3I13',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME MECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:2195.4,custo_corretiva:0,tipo:'preventiva',observacao:''},
-    {data:'2026-05-05',placa:'FQE3D43',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME MECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:1406.4,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'001',data:'2026-01-14',nf:'323',placa:'EYM3A94',servico:'MANUTENÇÃO GERAL - RETIFICA DE MOTOR, ETC',fornecedor:'CRISTIANO ADRIANO FERREIRA MECANICA ME',cnpj:'20.156.433/0001-48',custo_preventiva:0,custo_corretiva:25000.0,tipo:'corretiva',observacao:'ESPECIFICAÇÃO TOTAL NA NF'},
+    {rmv:'002',data:'2026-01-23',nf:'1101',placa:'GKH4I27',servico:'REVISÃO COMPLETA E TROACD E PEÇAS',fornecedor:'ROBERTO CARLOS THOME NECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:3185.0,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'002',data:'2026-01-23',nf:null,placa:'GKH4I27',servico:'FUNILARIA E PINTURA LATERAL DIREITA',fornecedor:'RISCO CAR FUNILARIA',cnpj:null,custo_preventiva:0,custo_corretiva:3000.0,tipo:'corretiva',observacao:'RECIBO'},
+    {rmv:'003',data:'2026-01-06',nf:'345309',placa:'SWJ9J25',servico:'TROCA DE PEÇAS REF. EMBREAGEM DEIFEITUOSA',fornecedor:'LEAUTO PARIS LTDA',cnpj:'31.861.115/0005-28',custo_preventiva:0,custo_corretiva:3448.12,tipo:'corretiva',observacao:'REEMBOLSO MAYCON'},
+    {rmv:'003',data:'2026-01-06',nf:'9',placa:'SWJ9J25',servico:'MÃO DE OBRA',fornecedor:'LEAUTO PARIS LTDA',cnpj:'31.861.115/0005-28',custo_preventiva:0,custo_corretiva:350.0,tipo:'corretiva',observacao:'REEMBOLSO MAYCON'},
+    {rmv:'004',data:'2026-01-23',nf:'241395',placa:'GKH4I27',servico:'TROCA DE PNEUS',fornecedor:'KD PNEUS LTDA',cnpj:'11.763.081/0001-06',custo_preventiva:1545.01,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'004',data:'2026-01-26',nf:'50977',placa:'GKH4I27',servico:'BALANCEAMENTO E ALINHAMENTO',fornecedor:'KD PNEUS LTDA',cnpj:'11.763.081/0001-06',custo_preventiva:309.0,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'005',data:'2026-01-27',nf:'136696',placa:'FQE3D43',servico:'REVISÃO COMPLETA E TROCA DE ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:898.34,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'005',data:'2026-01-27',nf:'79424',placa:'FQE3D43',servico:'MÃO DE OBRA',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:919.46,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'006',data:'2026-01-28',nf:'136716',placa:'FQE3D43',servico:'TROCA DE PEÇAS C/ DEFEITO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:0,custo_corretiva:2197.66,tipo:'corretiva',observacao:''},
+    {rmv:'006',data:'2026-01-28',nf:'79443',placa:'FQE3D43',servico:'MÃO DE OBRA',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:0,custo_corretiva:380.0,tipo:'corretiva',observacao:''},
+    {rmv:'007',data:'2026-02-04',nf:'1108',placa:'EXJ1B06',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME NECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:243.0,custo_corretiva:1034.0,tipo:'preventiva',observacao:''},
+    {rmv:'008',data:'2026-02-19',nf:'1116',placa:'FCP9A22',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME NECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:3203.0,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'009',data:'2026-04-16',nf:'80286',placa:'SWJ9J25',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:330.0,custo_corretiva:0,tipo:'preventiva',observacao:'REEMBOLSO MAYCON'},
+    {rmv:'009',data:'2026-04-16',nf:'80287',placa:'SWJ9J25',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:640.79,custo_corretiva:0,tipo:'preventiva',observacao:'REEMBOLSO MAYCON'},
+    {rmv:'009',data:'2026-04-16',nf:'137921',placa:'SWJ9J25',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:1525.12,custo_corretiva:0,tipo:'preventiva',observacao:'REEMBOLSO MAYCON'},
+    {rmv:'009',data:'2026-04-16',nf:'137922',placa:'SWJ9J25',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'AJC VEICULOS E SERVIÇOS LTDA',cnpj:'01.220.250/0002-53',custo_preventiva:579.75,custo_corretiva:0,tipo:'preventiva',observacao:'REEMBOLSO MAYCON'},
+    {rmv:'010',data:'2026-05-05',nf:'1151',placa:'SVC3I13',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME NECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:2195.4,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'011',data:'2026-05-05',nf:'1150',placa:'FQE3D43',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME NECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:1406.4,custo_corretiva:0,tipo:'preventiva',observacao:''},
+    {rmv:'012',data:'2026-06-18',nf:'369',placa:'EYM3A94',servico:'MANUTENÇÃO COMPLETA  E TROCA DE PEÇAS',fornecedor:'CRISTIANO ADRIANO FERREIRA MECANICA ME',cnpj:'20.156.433/0001-48',custo_preventiva:0,custo_corretiva:51345.0,tipo:'corretiva',observacao:'ESPECIFICAÇÃO TOTAL NO ORÇAMENTO'},
+    {rmv:'013',data:'2026-07-17',nf:'1178',placa:'GKH4I27',servico:'REVISÃO COMPLETA E TROCA DE PEÇAS E ÓLEO',fornecedor:'ROBERTO CARLOS THOME NECANICA ME',cnpj:'02.568.365/0001-42',custo_preventiva:1145.0,custo_corretiva:0,tipo:'preventiva',observacao:''},
   ];
+
 
   // find vehicle id by placa
   function veicByPlaca(placa){
     return cache.veiculos.find(v=>v.placa&&v.placa.toUpperCase()===placa.toUpperCase());
+  }
+
+  // Insere tolerando colunas ainda inexistentes no banco. Campos novos vindos
+  // da planilha (item, rmv, nf) podem não existir se a migração não foi rodada:
+  // em vez de perder o registro inteiro, removemos apenas a coluna que faltou e
+  // tentamos de novo, acumulando o que foi descartado para avisar no final.
+  const colunasIgnoradas=new Set();
+  async function inserirTolerante(tabela, payload){
+    let corpo={...payload};
+    for(let tentativa=0;tentativa<6;tentativa++){
+      try{ return await sbPost(tabela,corpo); }
+      catch(e){
+        const col=detectarColunaFaltante(e.message);
+        if(col&&temPropriaChave(corpo,col)){ delete corpo[col]; colunasIgnoradas.add(`${tabela}.${col}`); continue; }
+        throw e;
+      }
+    }
+    throw new Error('Colunas ausentes demais em '+tabela);
   }
 
   let multasOk=0,manutOk=0;
@@ -4769,20 +5399,21 @@ async function seedPlanilhaData(){
     try{
       const v=veicByPlaca(m.placa);
       const payload={
+        item:m.item,                          // numeração da planilha (6 / 6A)
         data_infracao:m.data_infracao,
         placa:m.placa,
         veiculo_id:v?v.id:null,
         modelo_veiculo:m.modelo,
         pontos:m.pontos||0,
         descricao_infracao:m.descricao,
-        local_infracao:m.local,
+        local_infracao:m.cidade,              // coluna CIDADE da planilha
         valor:m.valor,
-        tipo_documento:m.tipo_doc,
-        data_pagamento:m.data_pagamento,
-        condutor_responsavel:m.condutor,
-        status:m.status
+        tipo_documento:m.doc,                 // NOTIFICAÇÃO (tipo 6) / BOLETO (tipo 6A)
+        vencimento_pagamento:m.vencimento,     // coluna DATA PAGTO — ver nota no cabeçalho
+        condutor_responsavel:m.condutor,      // CONDUTOR RESPONSÁVEL ("VERIFICAR" = a apurar)
+        status:'pendente'
       };
-      const res=await sbPost('multas',payload);
+      const res=await inserirTolerante('multas',payload);
       if(!cache.multas)cache.multas=[];
       cache.multas.unshift(normIds(Array.isArray(res)?res[0]:{...payload,id:uid()}));
       multasOk++;
@@ -4792,8 +5423,10 @@ async function seedPlanilhaData(){
   for(const m of manutSeed){
     try{
       const v=veicByPlaca(m.placa);
-      const custo=m.custo_preventiva>0?m.custo_preventiva:m.custo_corretiva;
+      const custo=(Number(m.custo_preventiva)||0)+(Number(m.custo_corretiva)||0);
       const payload={
+        rmv:m.rmv,                            // requisição de manutenção (agrupa itens)
+        nf:m.nf,                              // nota fiscal do item
         data_servico:m.data,
         placa:m.placa,
         veiculo_id:v?v.id:null,
@@ -4805,17 +5438,56 @@ async function seedPlanilhaData(){
         custo_total:custo,
         tipo_manutencao:m.tipo,
         observacao:m.observacao,
-        status:'concluida'
+        status:'encerrado'
       };
-      const res=await sbPost('manutencoes',payload);
+      const res=await inserirTolerante('manutencoes',payload);
       if(!cache.manutencoes)cache.manutencoes=[];
       cache.manutencoes.unshift(normIds(Array.isArray(res)?res[0]:{...payload,id:uid()}));
       manutOk++;
     }catch(e){console.warn('Manut seed err:',e.message)}
   }
 
-  toast(`✅ Importados: ${multasOk} multas e ${manutOk} manutenções da planilha!`,'success');
+  // Conferência automática planilha x sistema (exigida pelo processo da Realtec).
+  conferirImportacao(multasOk,manutOk,multasSeed,manutSeed,colunasIgnoradas);
   renderAll();
+}
+
+// ══════════════════════════════════════════
+// CONFERÊNCIA AUTOMÁTICA: PLANILHA x SISTEMA
+// ──────────────────────────────────────────
+// Compara quantidade de registros, somatório de valores e de pontos entre o
+// que a planilha traz e o que foi efetivamente gravado. Qualquer divergência
+// é mostrada ao usuário — a importação nunca é declarada "OK" no escuro.
+// ══════════════════════════════════════════
+function conferirImportacao(multasOk,manutOk,multasSeed,manutSeed,colunasIgnoradas){
+  const soma=(arr,f)=>arr.reduce((s,x)=>s+(Number(f(x))||0),0);
+  const arred=v=>Math.round(v*100)/100;
+  const esperado={
+    multas:multasSeed.length,
+    manut:manutSeed.length,
+    valorMultas:arred(soma(multasSeed,m=>m.valor)),
+    pontos:soma(multasSeed,m=>m.pontos),
+    preventiva:arred(soma(manutSeed,m=>m.custo_preventiva)),
+    corretiva:arred(soma(manutSeed,m=>m.custo_corretiva))
+  };
+  const gravado={
+    multas:multasOk,
+    manut:manutOk,
+    valorMultas:arred(soma(cache.multas||[],m=>m.valor)),
+    pontos:soma(cache.multas||[],m=>m.pontos),
+    preventiva:arred(soma(cache.manutencoes||[],m=>m.custo_preventiva)),
+    corretiva:arred(soma(cache.manutencoes||[],m=>m.custo_corretiva))
+  };
+  const divergencias=Object.keys(esperado).filter(k=>esperado[k]!==gravado[k]);
+  console.table({planilha:esperado,sistema:gravado});
+  if(colunasIgnoradas.size){
+    toast(`Importado, mas ${colunasIgnoradas.size} campo(s) não existem no banco: ${[...colunasIgnoradas].join(', ')}. Rode a migração para não perder esses dados.`,'warning');
+  }
+  if(divergencias.length){
+    toast(`⚠ Conferência: divergência em ${divergencias.join(', ')}. Veja o console para o comparativo.`,'error');
+  }else{
+    toast(`✅ Conferido: ${multasOk} multas (${fmt$(gravado.valorMultas)} / ${gravado.pontos} pts) e ${manutOk} manutenções — idêntico à planilha.`,'success');
+  }
 }
 
 // ══════════════════════════════════════════
