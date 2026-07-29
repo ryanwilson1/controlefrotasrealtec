@@ -1091,7 +1091,7 @@ button{touch-action:manipulation}
              Fica oculta quando não há nada crítico, para não poluir a tela. -->
         <div id="dash-prioridade" style="display:none;margin-bottom:18px"></div>
 
-        <!-- ── PRIORIDADE 1: Multas (aberto · tipo 6 · tipo 6A) ── -->
+        <!-- ── PRIORIDADE 1: Multas (em aberto · notificações · boletos) ── -->
         <div class="kpi-grid" id="dash-kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
           <div class="kpi" onclick="nav('multas')" style="cursor:pointer" title="Processos com alguma etapa pendente">
             <div class="kpi-label" style="color:var(--danger)">Multas em Aberto</div>
@@ -1100,13 +1100,13 @@ button{touch-action:manipulation}
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
           </div>
           <div class="kpi" onclick="filtrarMultasPorDoc('notificacao')" style="cursor:pointer" title="Notificação de autuação — ainda sem boleto">
-            <div class="kpi-label" style="color:var(--accent-light)">Notificações · Tipo 6</div>
+            <div class="kpi-label" style="color:var(--accent-light)">Notificações</div>
             <div class="kpi-value" id="k-notificacoes" style="color:var(--accent-light)">0</div>
             <div class="kpi-sub" id="k-notif-sub">Sem boleto emitido</div>
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--accent-light),transparent)"></div>
           </div>
           <div class="kpi" onclick="filtrarMultasPorDoc('boleto')" style="cursor:pointer" title="Infração já convertida em multa com boleto">
-            <div class="kpi-label" style="color:var(--warning)">Com Boleto · Tipo 6A</div>
+            <div class="kpi-label" style="color:var(--warning)">Com Boleto</div>
             <div class="kpi-value" id="k-boletos" style="color:var(--warning)">0</div>
             <div class="kpi-sub" id="k-boletos-sub">Boletos emitidos</div>
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--warning),transparent)"></div>
@@ -1388,17 +1388,33 @@ button{touch-action:manipulation}
             <div class="page-title">Multas / Infrações</div>
             <div class="page-subtitle">Registro e controle de infrações de trânsito</div>
           </div>
-          <button class="btn btn-danger" onclick="openMultaModal()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-            Nova Multa
-          </button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="abrirConferenciaMultas()" title="Comparar o sistema com a planilha MULTAS GERAL, lançamento a lançamento">
+              Conferir planilha
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="sincronizarMultasPlanilha({})" title="Importar as multas da planilha que ainda não estão no sistema (não duplica as existentes)">
+              Sincronizar planilha
+            </button>
+            <button class="btn btn-danger" onclick="openMultaModal()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              Nova Multa
+            </button>
+          </div>
+        </div>
+        <!-- Avisa, na própria tela, quando o sistema está diferente da planilha.
+             Antes a divergência só aparecia num toast que sumia em 3 segundos. -->
+        <div id="mt-aviso-sync" style="display:none;margin-bottom:14px;padding:11px 14px;border-radius:9px;
+             background:var(--warning-dim);border:1px solid var(--warning);font-size:.8rem;
+             align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span id="mt-aviso-sync-txt" style="color:var(--warning);font-weight:600"></span>
+          <button class="btn btn-sm btn-primary" onclick="sincronizarMultasPlanilha({})">Importar agora</button>
         </div>
         <!-- KPIs multas -->
         <div class="kpi-grid" style="margin-bottom:18px">
           <div class="kpi">
             <div class="kpi-label" style="color:#ef9a9a">Processos de Multa</div>
             <div class="kpi-value" id="km-total" style="color:#ef9a9a">0</div>
-            <div class="kpi-sub" id="km-total-sub">Infrações distintas (6 + 6A contam 1)</div>
+            <div class="kpi-sub" id="km-total-sub">Infrações distintas (notificação + boleto = 1)</div>
             <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
           </div>
           <div class="kpi">
@@ -1429,11 +1445,11 @@ button{touch-action:manipulation}
             <option value="recurso">Em Recurso</option>
             <option value="cancelada">Cancelada</option>
           </select>
-          <select id="mt-doc-f" class="form-input" style="max-width:200px" onchange="renderMultas()" title="Tipo 6 = Notificação de Autuação · Tipo 6A = mesma infração já convertida em multa com boleto">
+          <select id="mt-doc-f" class="form-input" style="max-width:200px" onchange="renderMultas()" title="Notificação = autuação ainda sem boleto · Boleto = a mesma infração já convertida em multa a pagar">
             <option value="">Notificações e Boletos</option>
-            <option value="notificacao">Somente Tipo 6 — Notificação</option>
-            <option value="boleto">Somente Tipo 6A — Boleto</option>
-            <option value="sem_boleto">Tipo 6 ainda sem boleto</option>
+            <option value="notificacao">Somente notificações</option>
+            <option value="boleto">Somente com boleto</option>
+            <option value="sem_boleto">Notificações ainda sem boleto</option>
           </select>
           <input id="mt-from" type="date" class="form-input" style="max-width:145px" onchange="renderMultas()"/>
           <input id="mt-to" type="date" class="form-input" style="max-width:145px" onchange="renderMultas()"/>
@@ -1564,12 +1580,12 @@ button{touch-action:manipulation}
     <div class="form-grid form-grid-2">
       <div class="form-group"><label class="form-label">Documento *</label>
         <select id="mu-doc" class="form-input" onchange="atualizaDicaDocMulta()">
-          <option value="NOTIFICAÇÃO">Tipo 6 — Notificação de Autuação</option>
-          <option value="BOLETO">Tipo 6A — Multa com boleto</option>
+          <option value="NOTIFICAÇÃO">Notificação de Autuação (sem boleto)</option>
+          <option value="BOLETO">Multa com boleto emitido</option>
         </select>
         <div id="mu-doc-dica" class="form-note"></div>
       </div>
-      <div class="form-group"><label class="form-label">Item / Nº do processo</label><input id="mu-item" class="form-input" placeholder="Ex.: 6 ou 6A"/>
+      <div class="form-group"><label class="form-label">Item / Nº do processo</label><input id="mu-item" class="form-input" placeholder="Nº da planilha. Ex.: 30 ou 30A"/>
         <div class="form-note" style="color:var(--text-muted)">Mesma numeração da planilha. O sufixo “A” liga o boleto à notificação.</div>
       </div>
       <div class="form-group"><label class="form-label">Data da Infração *</label><input id="mu-data" type="date" class="form-input"/></div>
@@ -2023,6 +2039,21 @@ button{touch-action:manipulation}
   </div>
 </div>
 
+<!-- ══ CONFERÊNCIA PLANILHA x SISTEMA (MULTAS) ══ -->
+<div id="m-conf-multas" class="modal-bg">
+  <div class="modal" style="width:560px;max-width:97vw">
+    <div class="modal-header">
+      <div class="modal-title">Conferência — Planilha x Sistema</div>
+      <button class="modal-close" onclick="fecharConferenciaMultas()">✕</button>
+    </div>
+    <div id="conf-multas-corpo"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharConferenciaMultas()">Fechar</button>
+      <button class="btn btn-primary" id="conf-multas-importar" onclick="importarFaltantesMultas()">Importar o que falta</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ BOTTOM NAVIGATION (MOBILE) ══ -->
 <nav id="bottom-nav">
   <div class="bnav-wrap">
@@ -2327,8 +2358,13 @@ async function loadAll(){
     // Contagens BRUTAS (antes de filtrar exclusões lógicas). O seed automático
     // se baseia nelas: usar o cache já filtrado fazia registros excluídos pelo
     // usuário voltarem do zero no próximo carregamento da página.
+    // `multasBrutas` guarda a lista COMPLETA (inclusive registros com exclusão
+    // lógica). A sincronização com a planilha se baseia nela: assim, uma multa
+    // que o usuário apagou de propósito NÃO volta na próxima carga, e uma que
+    // nunca chegou a ser gravada é identificada e inserida.
     cache._brutos={
-      veiculos:(v||[]).length,multas:(mu||[]).length,manutencoes:(mn||[]).length
+      veiculos:(v||[]).length,multas:(mu||[]).length,manutencoes:(mn||[]).length,
+      multasBrutas:(mu||[]).map(normIds)
     };
     cache.veiculos=v||[];cache.motoristas=m||[];cache.obras=o||[];
     cache.abastecimentos=a||[];cache.manutencoes=mn||[];
@@ -2636,6 +2672,20 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   const ok = await loadAll();
   if(ok){
     try{ await seedPlanilhaData(); }catch(e){ console.warn('Seed automático falhou:', e.message); }
+    // Reconciliação: completa o que faltou, inclusive quando a importação
+    // inicial foi interrompida no meio numa sessão anterior. É idempotente —
+    // se não faltar nada, não faz nenhuma chamada de escrita.
+    try{
+      const diag=diagnosticoMultasPlanilha();
+      if(!diag.completo){
+        console.warn(`Sincronização de multas: ${diag.faltantes.length} lançamento(s) da planilha ausentes.`,
+                     diag.faltantes.map(f=>f.item));
+        await sincronizarMultasPlanilha({silencioso:true});
+        const depois=diagnosticoMultasPlanilha();
+        if(depois.completo)toast(`Multas sincronizadas com a planilha: ${(cache.multas||[]).length} lançamentos.`,'success');
+        else toast(`Ainda faltam ${depois.faltantes.length} multa(s). Abra Multas → "Conferir planilha".`,'warning');
+      }
+    }catch(e){ console.warn('Sincronização de multas falhou:', e.message); }
   }
   await new Promise(r=>setTimeout(r, 400));
 
@@ -4219,7 +4269,7 @@ function genPDF(type){
     const totalPend=grupos.filter(processoEmAberto).reduce((s,g)=>s+valorProcessoMulta(g),0);
     const qtdNotif=rows.filter(ehNotificacaoMulta).length, qtdBol=rows.filter(ehBoletoMulta).length;
     doc.setFontSize(9);doc.setTextColor(30,58,92);
-    doc.text(`Processos: ${grupos.length}  |  Notificacoes (6): ${qtdNotif}  |  Boletos (6A): ${qtdBol}  |  Valor total: ${fmt$(totalGeral)}  |  Em aberto: ${fmt$(totalPend)}`,14,34);
+    doc.text(`Processos: ${grupos.length}  |  Notificacoes: ${qtdNotif}  |  Boletos: ${qtdBol}  |  Valor total: ${fmt$(totalGeral)}  |  Em aberto: ${fmt$(totalPend)}`,14,34);
     doc.autoTable({startY:39,head:[['Item','Doc','Data','Placa','Condutor','Infração','Cidade','Pontos','Valor','Vencimento','Status','Anexo']],
       body:rows.map(m=>{
         const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
@@ -4227,7 +4277,7 @@ function genPDF(type){
         const descNorm=normalizaDescricaoInfracao(m.descricao_infracao);
         const tipoLabel=tipoMap[m.tipo_infracao]||m.tipo_infracao||descNorm||'Outros';
         const condutor=(mot&&mot.nome)||(condutorPendente(m)?'A INDICAR':m.condutor_responsavel)||'—';
-        return [rotuloEtapaMulta(m),ehBoletoMulta(m)?'6A Boleto':'6 Notif.',fmtDate(m.data_infracao),veic?veic.placa:(m.placa||'—'),condutor,tipoLabel,m.local_infracao||'—',m.pontos||0,m.valor?fmt$(m.valor):'—',fmtDate(m.vencimento_pagamento),m.status||'—',m.anexo_url?'Sim':'Não'];
+        return [rotuloEtapaMulta(m)||'-',ehBoletoMulta(m)?'Boleto':'Notificacao',fmtDate(m.data_infracao),veic?veic.placa:(m.placa||'—'),condutor,tipoLabel,m.local_infracao||'—',m.pontos||0,m.valor?fmt$(m.valor):'—',fmtDate(m.vencimento_pagamento),m.status||'—',m.anexo_url?'Sim':'Não'];
       }),
       styles:{fontSize:7,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]},
       columnStyles:{5:{cellWidth:42},6:{cellWidth:30}}
@@ -4275,7 +4325,7 @@ function genExcel(type){
     const descNorm=normalizaDescricaoInfracao(mu.descricao_infracao);
     // Colunas espelham a aba "MULTAS GERAL" da planilha da Realtec, acrescidas
     // do tipo de documento (6 / 6A) e do status controlado pelo sistema.
-    return {ITEM:mu.item||rotuloEtapaMulta(mu),'DATA INFRAÇÃO':fmtDate(mu.data_infracao),PONTOS:mu.pontos||0,
+    return {ITEM:mu.item||'—','DATA INFRAÇÃO':fmtDate(mu.data_infracao),PONTOS:mu.pontos||0,
       'DESCRIÇÃO DA INFRAÇÃO':descNorm||tipoMapXls[mu.tipo_infracao]||'—',CIDADE:mu.local_infracao||'—',
       PLACA:v?v.placa:(mu.placa||'—'),'MODELO VEÍCULO':v?v.modelo:(mu.modelo_veiculo||'—'),VALOR:mu.valor||0,
       DOC:ehBoletoMulta(mu)?'BOLETO':'NOTIFICAÇÃO',VENCIMENTO:fmtDate(mu.vencimento_pagamento),
@@ -4339,38 +4389,55 @@ function genExcel(type){
 // MULTAS / INFRAÇÕES
 // ══════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════════
-// REGRA DE NEGÓCIO REALTEC — TIPO 6 x TIPO 6A
+// REGRA DE NEGÓCIO REALTEC — NOTIFICAÇÃO x BOLETO
 // ──────────────────────────────────────────────────────────────────────────
-// Na planilha, a coluna ITEM identifica o processo. "6" é a NOTIFICAÇÃO DE
-// AUTUAÇÃO (ainda sem boleto); "6A" é a MESMA infração já convertida em multa
-// com boleto emitido. Os dois registros são etapas do MESMO processo, não
-// multas diferentes: contá-los duas vezes inflaria indicadores e relatórios.
+// Na planilha, a coluna ITEM identifica o processo e a coluna DOC identifica a
+// ETAPA. Uma infração começa como NOTIFICAÇÃO DE AUTUAÇÃO e, quando o boleto
+// chega, ganha uma segunda linha com o mesmo número seguido de "A" (30 → 30A).
+// As duas linhas são etapas do MESMO processo, não multas diferentes: contá-las
+// duas vezes inflaria indicadores e relatórios.
 //
-// Aqui tratamos os dois como um único "processo":
-//   · a numeração-base ("6") é a chave do processo;
+// ATENÇÃO — o sufixo "A" NÃO é o que define a etapa. Na planilha há boletos sem
+// sufixo nenhum (itens 11, 32, 44 e 53) e o número 6 é apenas um item entre 54.
+// Quem manda é a coluna DOC (NOTIFICAÇÃO / BOLETO); o número serve só para
+// ligar as duas etapas. Uma versão anterior tratava "6" e "6A" como se fossem
+// nomes de tipo de documento e rotulava TODAS as linhas assim — era isso que
+// fazia a tela parecer repetir "6A" em tudo.
+//
+// Aqui tratamos as duas etapas como um único "processo":
+//   · a numeração-base ("30") é a chave do processo;
 //   · registros sem numeração (cadastrados direto no sistema) são agrupados
 //     por placa + data + descrição, que é o que caracteriza a mesma infração;
 //   · o valor do processo é o do boleto quando existe, senão o da notificação.
 // Nada é apagado: as duas etapas continuam visíveis e com histórico próprio.
 // ══════════════════════════════════════════════════════════════════════════
 
-// Remove o sufixo de etapa: "6A" -> "6". Aceita 6B/6C caso a empresa passe a
-// registrar mais de uma etapa no futuro.
+// Remove o sufixo de etapa: "30A" -> "30". Aceita 30B/30C caso a empresa passe
+// a registrar mais de uma etapa no futuro.
 function baseItemMulta(item){
   return String(item==null?'':item).trim().toUpperCase().replace(/[A-Z]+$/,'');
 }
-// Tipo 6A: já existe boleto para pagamento.
+// Etapa "boleto": já existe documento de cobrança para pagamento.
 function ehBoletoMulta(m){
   return /BOLETO/i.test(String(m&&m.tipo_documento||''));
 }
-// Tipo 6: notificação de autuação, ainda sem boleto.
+// Etapa "notificação": autuação recebida, ainda sem boleto.
 function ehNotificacaoMulta(m){ return !ehBoletoMulta(m); }
 
-// Rótulo curto exibido na tela: "6A" quando há numeração, senão o tipo.
+// Número do processo exibido na tela. Devolve SEMPRE o item real da planilha
+// (1, 2, ... 30, 30A ...) ou vazio quando o registro não tem numeração.
+//
+// BUG CORRIGIDO: antes, quando o item estava ausente, esta função devolvia o
+// literal "6" ou "6A". Como a coluna `item` pode ser descartada na gravação
+// (ver inserirTolerante), TODAS as linhas passavam a exibir o mesmo rótulo —
+// a tela parecia "repetir tudo como 6A". Agora, sem numeração, o rótulo fica
+// vazio e a coluna mostra apenas a etapa (Notificação / Boleto), que é a
+// informação verdadeira.
 function rotuloEtapaMulta(m){
-  const item=String(m.item||'').trim();
-  return item?item:(ehBoletoMulta(m)?'6A':'6');
+  return String(m.item==null?'':m.item).trim();
 }
+// Nome da etapa do processo — sempre confiável, pois depende só do tipo de documento.
+function etapaMulta(m){ return ehBoletoMulta(m)?'Boleto':'Notificação'; }
 
 // Chave que identifica o processo (notificação + boleto compartilham a mesma).
 function chaveProcessoMulta(m){
@@ -4545,7 +4612,21 @@ function renderMultas(){
   if(km('km-pagas'))km('km-pagas').textContent=quitados.length;
   if(km('km-valor'))km('km-valor').textContent=fmt$(totalValor);
   const subTotal=document.getElementById('km-total-sub');
-  if(subTotal)subTotal.textContent=`${all.length} lançamentos (6 + 6A)`;
+  if(subTotal)subTotal.textContent=`${all.length} lançamentos (notificação + boleto)`;
+  // Aviso permanente de divergência com a planilha. Fica visível até que os
+  // 74 lançamentos estejam no sistema — não é mais um toast que desaparece.
+  const aviso=document.getElementById('mt-aviso-sync');
+  if(aviso){
+    let diag=null;
+    try{ diag=diagnosticoMultasPlanilha(); }catch(e){ diag=null; }
+    if(diag&&!diag.completo){
+      const txt=document.getElementById('mt-aviso-sync-txt');
+      if(txt)txt.textContent=`Faltam ${diag.faltantes.length} de ${diag.totalPlanilha} multas da planilha no sistema (${all.length} importadas).`;
+      aviso.style.display='flex';
+    }else{
+      aviso.style.display='none';
+    }
+  }
   // Table
   if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="13">Nenhuma multa registrada</td></tr>';return}
   const stMap={pendente:'badge-manutencao',paga:'badge-ativo',recurso:'badge-blue',cancelada:'badge-gray'};
@@ -4559,14 +4640,16 @@ function renderMultas(){
     const tipoLabel=tipoMap[m.tipo_infracao]||h(m.tipo_infracao||'')||h(descNorm||'')||'Outros';
     const autoOuLocal=m.auto_numero||m.local_infracao||descNorm||'—';
     const temAnexo=!!(m.anexo_url);
-    // Etapa do processo: 6 = notificação, 6A = já com boleto.
+    // Etapa do processo: notificação de autuação x multa já com boleto.
     const boleto=ehBoletoMulta(m);
     const semBoleto=notificacaoSemBoleto(m,processos);
+    const numItem=rotuloEtapaMulta(m);
     const condutor=(mot&&mot.nome)||(m.condutor_responsavel&&!condutorPendente(m)?m.condutor_responsavel:'');
     return `<tr>
       <td>${fmtDate(m.data_infracao)}</td>
       <td style="white-space:nowrap">
-        <span class="badge ${boleto?'badge-multa-pend':'badge-blue'}" title="${boleto?'Tipo 6A — multa com boleto emitido':'Tipo 6 — notificação de autuação, ainda sem boleto'}">${h(rotuloEtapaMulta(m))} · ${boleto?'Boleto':'Notif.'}</span>
+        <span class="badge ${boleto?'badge-multa-pend':'badge-blue'}" title="${boleto?'Multa já convertida, com boleto emitido':'Notificação de autuação, ainda sem boleto'}">${boleto?'Boleto':'Notif.'}</span>
+        ${numItem?`<span style="font-size:.68rem;color:var(--text-muted);margin-left:5px" title="Item nº ${h(numItem)} da planilha">nº ${h(numItem)}</span>`:''}
       </td>
       <td><strong style="color:var(--text-primary)">${h(veic?veic.placa:(m.placa||'—'))}</strong></td>
       <td>${h(veic?veic.modelo:(m.modelo_veiculo||'—'))}</td>
@@ -4579,7 +4662,7 @@ function renderMultas(){
       <td><span class="badge ${stMap[m.status]||'badge-gray'}">${h(m.status||'—')}</span></td>
       <td style="text-align:center">${temAnexo?`<button onclick="visualizarAnexo('${hAttr(m.anexo_url)}','${hAttr(m.anexo_nome||'')}')" title="${h(m.anexo_nome||'Ver anexo')}" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--accent)">📎</button>`:'<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="white-space:nowrap">
-        ${semBoleto?`<button class="icon-btn" onclick="converterEmBoleto('${idAttr(m.id)}')" title="Recebeu o boleto? Gerar o Tipo 6A deste processo" style="color:var(--warning)">6A</button>`:''}
+        ${semBoleto?`<button class="icon-btn" onclick="converterEmBoleto('${idAttr(m.id)}')" title="Recebeu o boleto desta notificação? Lançar a etapa com boleto" style="color:var(--warning);font-size:.68rem;font-weight:700">+BOL</button>`:''}
         <button class="icon-btn e" onclick="editMulta('${idAttr(m.id)}')" title="Editar">✏</button>
         <button class="icon-btn d" onclick="delMulta('${idAttr(m.id)}')" title="Excluir">✕</button>
       </td>
@@ -4597,7 +4680,7 @@ function converterEmBoleto(id){
   if(!orig){toast('Notificação não encontrada.','error');return}
   const base=baseItemMulta(orig.item)||String(orig.item||'').trim();
   confirm2('Converter em multa com boleto',
-    `A notificação ${base?'nº '+base:''} passará a ter também o lançamento Tipo 6A (com boleto). A notificação original é preservada. Confirmar?`,
+    `A notificação ${base?'nº '+base:''} passará a ter também o lançamento com boleto${base?' (nº '+base+'A)':''}. A notificação original é preservada. Confirmar?`,
     ()=>{
       openMultaModal({
         ...orig,
@@ -4613,7 +4696,7 @@ function converterEmBoleto(id){
       // openMultaModal usa o id para decidir entre novo/edição; sem id ele abre
       // como cadastro novo, que é exatamente o que queremos aqui.
       multaEditId=null;
-      document.getElementById('m-multa-title').textContent='Nova Multa com Boleto (Tipo 6A)';
+      document.getElementById('m-multa-title').textContent='Nova Multa com Boleto';
       toast('Confira o valor e o vencimento do boleto antes de salvar.','info');
     });
 }
@@ -5232,6 +5315,393 @@ const veiculosSeed=[
   {placa:'SWJ9J25',modelo:'OROCH',marca:'RENAULT',ano:'2024',renavam:'1402714251',cor:'Branco',tipo:'caminhonete',km_atual:54352,combustivel:'flex',status:'ativo'},
   {placa:'UFJ8D74',modelo:'OROCH',marca:'RENAULT',ano:'2026',renavam:'1492427630',cor:'Cinza',tipo:'caminhonete',km_atual:0,combustivel:'flex',status:'ativo'},
 ];
+// ══════════════════════════════════════════════════════════════════════════
+// GRAVAÇÃO DE REGISTROS VINDOS DA PLANILHA — helpers compartilhados
+// ──────────────────────────────────────────────────────────────────────────
+// Usados tanto pela importação inicial quanto pela sincronização manual, para
+// que os dois caminhos gravem exatamente o mesmo payload. Antes, o loop de
+// gravação vivia dentro de seedPlanilhaData e não havia como reexecutá-lo.
+// ══════════════════════════════════════════════════════════════════════════
+function veicByPlaca(placa){
+  return (cache.veiculos||[]).find(v=>v.placa&&normalizaPlaca(v.placa)===normalizaPlaca(placa));
+}
+
+// Insere tolerando colunas ainda inexistentes no banco. Campos novos vindos
+// da planilha (item, rmv, nf) podem não existir se a migração não foi rodada:
+// em vez de perder o registro inteiro, removemos apenas a coluna que faltou e
+// tentamos de novo, acumulando o que foi descartado para avisar no final.
+const COLUNAS_IGNORADAS=new Set();
+async function inserirTolerante(tabela, payload){
+  let corpo={...payload};
+  for(let tentativa=0;tentativa<8;tentativa++){
+    try{ return await sbPost(tabela,corpo); }
+    catch(e){
+      const col=detectarColunaFaltante(e.message);
+      if(col&&temPropriaChave(corpo,col)){ delete corpo[col]; COLUNAS_IGNORADAS.add(`${tabela}.${col}`); continue; }
+      throw e;
+    }
+  }
+  throw new Error('Colunas ausentes demais em '+tabela);
+}
+
+// Converte uma linha da planilha no registro da tabela `multas`.
+function payloadMultaPlanilha(m){
+  const v=veicByPlaca(m.placa);
+  return {
+    item:m.item,                          // numeração da planilha (6 / 6A)
+    data_infracao:m.data_infracao,
+    placa:m.placa,
+    veiculo_id:v?v.id:null,
+    modelo_veiculo:m.modelo,
+    pontos:m.pontos||0,
+    descricao_infracao:m.descricao,
+    local_infracao:m.cidade,              // coluna CIDADE da planilha
+    valor:m.valor,
+    tipo_documento:m.doc,                 // NOTIFICAÇÃO / BOLETO
+    vencimento_pagamento:m.vencimento,    // coluna DATA PAGTO
+    condutor_responsavel:m.condutor,      // "VERIFICAR" = condutor a apurar
+    status:'pendente'
+  };
+}
+
+// Grava uma lista de linhas da planilha, uma a uma, e devolve o resultado
+// detalhado. Cada falha é registrada COM O ITEM correspondente — antes, o
+// erro caía num console.warn genérico e o usuário não tinha como saber quais
+// multas tinham ficado para trás.
+async function gravarMultasPlanilha(lista){
+  const falhas=[];
+  let gravadas=0;
+  for(const m of (lista||[])){
+    try{
+      const payload=payloadMultaPlanilha(m);
+      const res=await inserirTolerante('multas',payload);
+      if(!cache.multas)cache.multas=[];
+      const gravado=normIds(Array.isArray(res)?res[0]:{...payload,id:uid()});
+      cache.multas.unshift(gravado);
+      if(cache._brutos&&Array.isArray(cache._brutos.multasBrutas))cache._brutos.multasBrutas.push(gravado);
+      gravadas++;
+    }catch(e){
+      falhas.push({item:m.item,placa:m.placa,data:m.data_infracao,erro:e.message});
+    }
+  }
+  return {gravadas,falhas};
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PLANILHA "MULTAS GERAL" — 74 LANÇAMENTOS (itens 1 a 54, com as etapas "A")
+// ──────────────────────────────────────────────────────────────────────────
+// Espelho fiel da aba MULTAS GERAL. Conferido campo a campo contra o arquivo
+// original: 74 registros, 204 pontos e R$ 12.285,03 somando a coluna VALOR.
+// Os totais ficam logo abaixo, em MULTAS_PLANILHA_TOTAIS, e são usados pela
+// conferência automática — se alguém editar esta lista sem atualizar os
+// totais, o sistema acusa a divergência em vez de deixar passar.
+// ══════════════════════════════════════════════════════════════════════════
+const MULTAS_PLANILHA=[
+  {item:'1',data_infracao:'2025-11-17',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'RIBEIRÃO PRETO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'2',data_infracao:'2025-11-24',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'3',data_infracao:'2025-12-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO CAETANO DO SUL - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'4',data_infracao:'2025-12-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SANTO ANDRÉ - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'5',data_infracao:'2025-12-30',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO CAETANO DO SUL - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'6',data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CRUZEIRO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'6A',data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CRUZEIRO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-10-09',condutor:'VERIFICAR'},
+  {item:'7',data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'7A',data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-05-20',condutor:'VERIFICAR'},
+  {item:'8',data_infracao:'2026-01-12',placa:'SVC3I13',modelo:'OROCH',pontos:5,descricao:'EVADIR-SE DE PEDÁGIO',cidade:'PINDAMONHANGABA - SP',valor:195.23,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+  {item:'9',data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'9A',data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:104.13,doc:'BOLETO',vencimento:'2026-05-25',condutor:'VERIFICAR'},
+  {item:'10',data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'10A',data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'BOLETO',vencimento:'2026-05-27',condutor:'VERIFICAR'},
+  {item:'11',data_infracao:'2026-01-20',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-01',condutor:'VERIFICAR'},
+  {item:'12',data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'12A',data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
+  {item:'13',data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'13A',data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
+  {item:'14',data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'14A',data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'BOLETO',vencimento:'2026-06-15',condutor:'VERIFICAR'},
+  {item:'15',data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'AVANÇAR SINAL VERMELHO',cidade:'SANTO ANDRÉ - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+  {item:'15A',data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'AVANÇAR SINAL VERMELHO',cidade:'SANTO ANDRÉ - SP',valor:0.0,doc:'BOLETO',vencimento:'2026-06-01',condutor:'MAYCON'},
+  {item:'16',data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'16A',data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-24',condutor:'VERIFICAR'},
+  {item:'17',data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SÃO CAETANO DO SUL - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'17A',data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SÃO CAETANO DO SUL - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
+  {item:'18',data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'18A',data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-03',condutor:'VERIFICAR'},
+  {item:'19',data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'19A',data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'BOLETO',vencimento:'2026-06-29',condutor:'VERIFICAR'},
+  {item:'20',data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'20A',data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-07-03',condutor:'VERIFICAR'},
+  {item:'21',data_infracao:'2026-03-09',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (16/10/25)',cidade:'MAUA - SP',valor:586.94,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'22',data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (13/10/25)',cidade:'SÃO CAETANO DO SUL - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'22A',data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (13/10/25)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'BOLETO',vencimento:'2026-06-22',condutor:'VERIFICAR'},
+  {item:'23',data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'23A',data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-05',condutor:'VERIFICAR'},
+  {item:'24',data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'24A',data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-12',condutor:'VERIFICAR'},
+  {item:'25',data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'25A',data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-07-24',condutor:'VERIFICAR'},
+  {item:'26',data_infracao:'2026-04-07',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO IDENTIFICAÇÃO DE CONDUTOR (12/01/26)',cidade:'PINDAMONHANGABA - SP',valor:390.46,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+  {item:'27',data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'27A',data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-07-24',condutor:'VERIFICAR'},
+  {item:'28',data_infracao:'2026-04-27',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/11/25)',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+  {item:'28A',data_infracao:'2026-04-27',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/11/25)',cidade:'SANTO ANDRÉ - SP',valor:260.32,doc:'BOLETO',vencimento:'2026-07-29',condutor:'MAYCON'},
+  {item:'29',data_infracao:'2026-04-28',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+  {item:'30',data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'MIRACATU- SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+  {item:'30A',data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'MIRACATU- SP',valor:260.32,doc:'BOLETO',vencimento:null,condutor:'ROGÉRIO'},
+  {item:'31',data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (04/02/26)',cidade:'SANTO ANDRÉ - SP',valor:586.94,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+  {item:'32',data_infracao:'2026-05-04',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (16/10/25)',cidade:'MAUA - SP',valor:586.94,doc:'BOLETO',vencimento:'2026-06-23',condutor:'VERIFICAR'},
+  {item:'33',data_infracao:'2026-05-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'ROBEIRÃO PRETO - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'34',data_infracao:'2026-05-12',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'35',data_infracao:'2026-05-12',placa:'EYM3A94',modelo:'MASTER',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'36',data_infracao:'2026-05-15',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'MAUA - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'37',data_infracao:'2026-05-15',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'MAUA - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'38',data_infracao:'2026-05-18',placa:'FQJ5E94',modelo:'AMAROK',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CARAPICUIBA - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'39',data_infracao:'2026-05-19',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'40',data_infracao:'2026-05-20',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (31/12/25)',cidade:'SANTO ANDRÉ - SP',valor:390.46,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
+  {item:'41',data_infracao:'2026-05-20',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'42',data_infracao:'2026-05-25',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (21/12/25)',cidade:'SANTO ANDRÉ - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'43',data_infracao:'2026-05-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'44',data_infracao:'2026-06-01',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (12/01/26)',cidade:'PINDAMONHANGABA - SP',valor:390.46,doc:'BOLETO',vencimento:'2026-07-13',condutor:'ROGÉRIO'},
+  {item:'45',data_infracao:'2026-06-02',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'46',data_infracao:'2026-06-08',placa:'DQG9038',modelo:'PALIO',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO B. DO CAMPO -SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'47',data_infracao:'2026-06-09',placa:'EXJ1B06',modelo:'KA',pontos:4,descricao:'TRANSITAR C/ LAMPADAS QUEIMADAS',cidade:'SANTO ANDRÉ - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'48',data_infracao:'2026-06-24',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (01/04/2026)',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'49',data_infracao:'2026-06-29',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/04/2026)',cidade:'SANTO ANDRÉ - SP',valor:390.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
+  {item:'50',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (26/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
+  {item:'51',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (27/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
+  {item:'52',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (30/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
+  {item:'53',data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (30/12/2025)',cidade:'SANTO ANDRÉ - SP',valor:586.94,doc:'BOLETO',vencimento:'2026-08-13',condutor:'MAYCON'},
+  {item:'54',data_infracao:'2026-05-16',placa:'UFJ8D74',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO LOURENÇO DA SERRA- SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
+];
+
+const MULTAS_PLANILHA_TOTAIS={registros:74,pontos:204,valor:12285.03};
+
+// ══════════════════════════════════════════════════════════════════════════
+// SINCRONIZAÇÃO PLANILHA → SISTEMA  (correção do "migrou só uma parte")
+// ──────────────────────────────────────────────────────────────────────────
+// PROBLEMA CORRIGIDO: a importação era "tudo ou nada". Ela só rodava com a
+// tabela `multas` VAZIA e, uma vez iniciada, qualquer interrupção no meio
+// (rede caindo, aba fechada, erro de RLS numa linha) deixava o banco com uma
+// parte dos registros. No carregamento seguinte a tabela já não estava vazia,
+// então a importação era pulada para sempre e as multas que faltavam nunca
+// entravam — exatamente o "só migrou o que enche uma página".
+//
+// A partir daqui a importação é RECONCILIAÇÃO, não recomeço:
+//   · compara, lançamento a lançamento, a planilha com o que existe no banco;
+//   · insere APENAS o que está faltando (nunca duplica o que já está lá);
+//   · pode rodar quantas vezes for preciso, sempre convergindo para os 74.
+//
+// A comparação usa a lista BRUTA do banco (cache._brutos.multasBrutas), que
+// inclui registros com exclusão lógica. Assim, uma multa apagada de propósito
+// pelo usuário continua apagada: ela consta como "já conhecida" e não volta.
+// ══════════════════════════════════════════════════════════════════════════
+
+// Chave primária de comparação: o número do item da planilha ("6", "6A", ...).
+function chaveItemMulta(item){
+  return String(item==null?'':item).trim().toUpperCase().replace(/\s+/g,'');
+}
+// Chave secundária, usada quando o registro do banco não tem o número do item
+// (acontece quando a coluna `item` ainda não existe no Supabase e é descartada
+// na gravação). Identifica a infração por placa + data + descrição + etapa.
+// Aqui a descrição NÃO passa por normalizaDescricaoInfracao de propósito: essa
+// normalização apaga o "(26/12/2025)" do final e faria os itens 50, 51 e 52 —
+// que são três autuações distintas — parecerem o mesmo lançamento.
+function assinaturaMulta(placa,data,descricao,doc){
+  return [
+    normalizaPlaca(placa||''),
+    String(data||'').slice(0,10),
+    String(descricao||'').toUpperCase().replace(/\s+/g,' ').trim(),
+    /BOLETO/i.test(String(doc||''))?'B':'N'
+  ].join('|');
+}
+function assinaturaLinhaPlanilha(p){ return assinaturaMulta(p.placa,p.data_infracao,p.descricao,p.doc); }
+function assinaturaRegistroBanco(m){ return assinaturaMulta(m.placa,m.data_infracao,m.descricao_infracao,m.tipo_documento); }
+
+// Compara planilha x banco e devolve o que falta, sem gravar nada.
+// Casamento em duas passadas:
+//   1ª — por número do item, quando os dois lados têm numeração;
+//   2ª — por assinatura, um-para-um, para o que sobrou.
+// A 2ª passada é feita por CONTAGEM (multiset), e não por presença: os itens
+// 36 e 37 são duas autuações idênticas no mesmo dia; comparar só por presença
+// consideraria a segunda como "já existente" e ela nunca seria inserida.
+function diagnosticoMultasPlanilha(){
+  const banco=(cache._brutos&&Array.isArray(cache._brutos.multasBrutas))
+    ? cache._brutos.multasBrutas
+    : (cache.multas||[]);
+
+  const itensBanco=new Set();
+  const restantes=[];
+  banco.forEach(m=>{
+    const it=chaveItemMulta(m.item);
+    if(it)itensBanco.add(it); else restantes.push(m);
+  });
+
+  // 1ª passada — casamento por número do item.
+  const faltantes=[];
+  const pendentes=[];
+  MULTAS_PLANILHA.forEach(p=>{
+    const it=chaveItemMulta(p.item);
+    if(it&&itensBanco.has(it))return;      // já está no banco, nada a fazer
+    pendentes.push(p);
+  });
+
+  // 2ª passada — casamento por assinatura, respeitando as quantidades.
+  const contagem=new Map();
+  restantes.forEach(m=>{
+    const a=assinaturaRegistroBanco(m);
+    contagem.set(a,(contagem.get(a)||0)+1);
+  });
+  pendentes.forEach(p=>{
+    const a=assinaturaLinhaPlanilha(p);
+    const disponivel=contagem.get(a)||0;
+    if(disponivel>0){ contagem.set(a,disponivel-1); return; }  // consumiu um par existente
+    faltantes.push(p);
+  });
+
+  const registrosVisiveis=(cache.multas||[]).length;
+  return {
+    faltantes,
+    totalPlanilha:MULTAS_PLANILHA.length,
+    noBanco:banco.length,
+    visiveis:registrosVisiveis,
+    completo:faltantes.length===0
+  };
+}
+
+// Executa a sincronização. `silencioso` = chamada automática no boot.
+let SINCRONIZANDO_MULTAS=false;
+async function sincronizarMultasPlanilha(opts){
+  const cfg=opts||{};
+  if(SINCRONIZANDO_MULTAS){ if(!cfg.silencioso)toast('Sincronização já em andamento.','info'); return null; }
+  const diag=diagnosticoMultasPlanilha();
+  if(diag.completo){
+    if(!cfg.silencioso)toast(`Nada a importar: as ${diag.totalPlanilha} multas da planilha já estão no sistema.`,'success');
+    return diag;
+  }
+  SINCRONIZANDO_MULTAS=true;
+  try{
+    if(!cfg.silencioso)toast(`Importando ${diag.faltantes.length} multa(s) que faltavam...`,'info');
+    const r=await gravarMultasPlanilha(diag.faltantes);
+    if(r.falhas.length){
+      console.warn('Multas que o banco recusou:',r.falhas);
+      toast(`${r.gravadas} multa(s) importada(s), mas ${r.falhas.length} falharam. Veja o console e use "Conferir planilha".`,'error');
+    }else{
+      toast(`✅ ${r.gravadas} multa(s) importada(s). Total agora: ${(cache.multas||[]).length} lançamentos.`,'success');
+    }
+    if(COLUNAS_IGNORADAS.size){
+      toast(`Atenção: campo(s) inexistente(s) no banco (${[...COLUNAS_IGNORADAS].join(', ')}). Rode a migração para não perder esses dados.`,'warning');
+    }
+    renderAll();
+    return diagnosticoMultasPlanilha();
+  }finally{
+    SINCRONIZANDO_MULTAS=false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CONFERÊNCIA PLANILHA x SISTEMA — relatório completo, sem "OK no escuro"
+// ══════════════════════════════════════════════════════════════════════════
+function conferenciaMultas(){
+  const arred=v=>Math.round(v*100)/100;
+  const visiveis=cache.multas||[];
+  const diag=diagnosticoMultasPlanilha();
+
+  const somaValor=arred(visiveis.reduce((s,m)=>s+(Number(m.valor)||0),0));
+  const somaPontos=visiveis.reduce((s,m)=>s+(Number(m.pontos)||0),0);
+  const semItem=visiveis.filter(m=>!chaveItemMulta(m.item)).length;
+
+  // Duplicidades: mesmo item aparecendo mais de uma vez no sistema.
+  const porItem=new Map();
+  visiveis.forEach(m=>{
+    const it=chaveItemMulta(m.item);
+    if(!it)return;
+    porItem.set(it,(porItem.get(it)||0)+1);
+  });
+  const duplicados=[...porItem.entries()].filter(([,n])=>n>1).map(([it,n])=>`${it} (${n}x)`);
+
+  const problemas=[];
+  if(diag.faltantes.length)problemas.push(`${diag.faltantes.length} lançamento(s) da planilha ainda não estão no sistema`);
+  if(duplicados.length)problemas.push(`${duplicados.length} item(ns) duplicado(s): ${duplicados.join(', ')}`);
+  if(visiveis.length!==MULTAS_PLANILHA_TOTAIS.registros)problemas.push(`quantidade diferente: planilha ${MULTAS_PLANILHA_TOTAIS.registros}, sistema ${visiveis.length}`);
+  if(somaPontos!==MULTAS_PLANILHA_TOTAIS.pontos)problemas.push(`pontos diferentes: planilha ${MULTAS_PLANILHA_TOTAIS.pontos}, sistema ${somaPontos}`);
+  if(Math.abs(somaValor-MULTAS_PLANILHA_TOTAIS.valor)>0.01)problemas.push(`valor diferente: planilha ${fmt$(MULTAS_PLANILHA_TOTAIS.valor)}, sistema ${fmt$(somaValor)}`);
+  if(semItem)problemas.push(`${semItem} registro(s) sem o número do item — a coluna "item" pode não existir no banco`);
+
+  return {diag,visiveis:visiveis.length,somaValor,somaPontos,semItem,duplicados,problemas};
+}
+
+function abrirConferenciaMultas(){
+  const c=conferenciaMultas();
+  const ok=c.problemas.length===0;
+  const linha=(rot,planilha,sistema,bate)=>`<tr>
+    <td style="padding:7px 8px;color:var(--text-secondary)">${rot}</td>
+    <td style="padding:7px 8px;text-align:right;font-weight:600">${planilha}</td>
+    <td style="padding:7px 8px;text-align:right;font-weight:600">${sistema}</td>
+    <td style="padding:7px 8px;text-align:center">${bate?'<span style="color:var(--success);font-weight:700">✓</span>':'<span style="color:var(--danger);font-weight:700">✕</span>'}</td>
+  </tr>`;
+
+  const faltam=c.diag.faltantes;
+  const listaFaltantes=faltam.length
+    ? `<div style="margin-top:14px">
+         <div style="font-weight:700;color:var(--danger);margin-bottom:6px;font-size:.82rem">Faltando no sistema (${faltam.length})</div>
+         <div style="max-height:150px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg-card2);font-size:.74rem;line-height:1.7">
+           ${faltam.map(f=>`<div>nº <strong>${h(f.item)}</strong> · ${h(f.data_infracao)} · ${h(f.placa)} · ${h(String(f.descricao||'').slice(0,42))}</div>`).join('')}
+         </div>
+       </div>`
+    : '';
+
+  const alertaItem=c.semItem
+    ? `<div style="margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--warning-dim);border:1px solid var(--warning);font-size:.76rem;line-height:1.6">
+         <strong style="color:var(--warning)">${c.semItem} registro(s) sem o número do item.</strong><br/>
+         A coluna <code>item</code> provavelmente não existe na tabela <code>multas</code> e foi descartada na gravação.
+         Rode no SQL Editor do Supabase:<br/>
+         <code style="display:inline-block;margin-top:5px;padding:4px 7px;background:var(--bg-panel);border-radius:5px">ALTER TABLE multas ADD COLUMN IF NOT EXISTS item text;</code><br/>
+         Depois use <strong>Sincronizar planilha</strong> novamente.
+       </div>`
+    : '';
+
+  const corpo=`
+    <div style="padding:2px 0 4px">
+      <div style="padding:11px 13px;border-radius:9px;margin-bottom:14px;font-size:.82rem;font-weight:600;
+        background:${ok?'var(--success-dim)':'var(--danger-dim)'};
+        border:1px solid ${ok?'var(--success)':'var(--danger)'};
+        color:${ok?'var(--success)':'var(--danger)'}">
+        ${ok?'✓ Sistema idêntico à planilha — nenhuma divergência encontrada.'
+            :'✕ Divergências encontradas:<br/>· '+c.problemas.join('<br/>· ')}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:7px 8px;text-align:left;color:var(--text-muted);font-weight:600">Conferência</th>
+            <th style="padding:7px 8px;text-align:right;color:var(--text-muted);font-weight:600">Planilha</th>
+            <th style="padding:7px 8px;text-align:right;color:var(--text-muted);font-weight:600">Sistema</th>
+            <th style="padding:7px 8px;text-align:center;color:var(--text-muted);font-weight:600">OK</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linha('Lançamentos (notificações + boletos)',MULTAS_PLANILHA_TOTAIS.registros,c.visiveis,c.visiveis===MULTAS_PLANILHA_TOTAIS.registros)}
+          ${linha('Soma de pontos',MULTAS_PLANILHA_TOTAIS.pontos,c.somaPontos,c.somaPontos===MULTAS_PLANILHA_TOTAIS.pontos)}
+          ${linha('Soma da coluna VALOR',fmt$(MULTAS_PLANILHA_TOTAIS.valor),fmt$(c.somaValor),Math.abs(c.somaValor-MULTAS_PLANILHA_TOTAIS.valor)<=0.01)}
+          ${linha('Itens duplicados',0,c.duplicados.length,c.duplicados.length===0)}
+          ${linha('Sem número de item',0,c.semItem,c.semItem===0)}
+        </tbody>
+      </table>
+      ${listaFaltantes}
+      ${alertaItem}
+    </div>`;
+
+  document.getElementById('conf-multas-corpo').innerHTML=corpo;
+  const btn=document.getElementById('conf-multas-importar');
+  if(btn)btn.style.display=faltam.length?'':'none';
+  document.getElementById('m-conf-multas').classList.add('open');
+  console.table({planilha:{registros:MULTAS_PLANILHA_TOTAIS.registros,pontos:MULTAS_PLANILHA_TOTAIS.pontos,valor:MULTAS_PLANILHA_TOTAIS.valor},
+                 sistema:{registros:c.visiveis,pontos:c.somaPontos,valor:c.somaValor}});
+}
+function fecharConferenciaMultas(){document.getElementById('m-conf-multas').classList.remove('open')}
+async function importarFaltantesMultas(){
+  await sincronizarMultasPlanilha({});
+  abrirConferenciaMultas();
+}
+
 async function seedVeiculosData(){
   // Usa a contagem BRUTA vinda do banco (inclui registros com exclusão lógica).
   // Com a contagem do cache filtrado, apagar todos os veículos fazia os 11
@@ -5257,93 +5727,27 @@ async function seedVeiculosData(){
 async function seedPlanilhaData(){
   // Veículos primeiro, para multas/manutenções já saírem vinculadas.
   await seedVeiculosData();
-  // Só semeia se as tabelas estiverem realmente vazias NO BANCO.
   // Contagem bruta (inclui excluídos logicamente): sem isso, apagar todas as
-  // multas fazia as 31 multas da planilha reaparecerem no próximo carregamento.
+  // multas fazia a planilha inteira reaparecer no próximo carregamento.
+  //
+  // CORRIGIDO: a condição era `multasCount>0 || manutCount>0`, ou seja, as
+  // duas importações estavam amarradas. Bastava a tabela de multas ter uma
+  // linha para as manutenções também deixarem de ser importadas (e vice-versa).
+  // Agora cada tabela decide sozinha. O que faltar em multas é completado
+  // depois por sincronizarMultasPlanilha(), que compara registro a registro.
   const multasCount=cache._brutos?cache._brutos.multas:(cache.multas||[]).length;
   const manutCount=cache._brutos?cache._brutos.manutencoes:(cache.manutencoes||[]).length;
-  if(multasCount>0||manutCount>0){
-    console.log('Dados já existem no banco, seed ignorado.');
+  const importarMultas=multasCount===0;
+  const importarManut=manutCount===0;
+  if(!importarMultas&&!importarManut){
+    console.log('Multas e manutenções já existem no banco; importação inicial ignorada.');
     return;
   }
   toast('Importando dados da planilha...','info');
 
-  const multasSeed=[
-    {item:'1',data_infracao:'2025-11-17',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'RIBEIRÃO PRETO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'2',data_infracao:'2025-11-24',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'3',data_infracao:'2025-12-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO CAETANO DO SUL - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'4',data_infracao:'2025-12-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SANTO ANDRÉ - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'5',data_infracao:'2025-12-30',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO CAETANO DO SUL - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'6',data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CRUZEIRO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'6A',data_infracao:'2026-01-05',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CRUZEIRO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-10-09',condutor:'VERIFICAR'},
-    {item:'7',data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'7A',data_infracao:'2026-01-09',placa:'FQE3D43',modelo:'OROCH',pontos:5,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-05-20',condutor:'VERIFICAR'},
-    {item:'8',data_infracao:'2026-01-12',placa:'SVC3I13',modelo:'OROCH',pontos:5,descricao:'EVADIR-SE DE PEDÁGIO',cidade:'PINDAMONHANGABA - SP',valor:195.23,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
-    {item:'9',data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'9A',data_infracao:'2026-01-13',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:104.13,doc:'BOLETO',vencimento:'2026-05-25',condutor:'VERIFICAR'},
-    {item:'10',data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'10A',data_infracao:'2026-01-15',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'BOLETO',vencimento:'2026-05-27',condutor:'VERIFICAR'},
-    {item:'11',data_infracao:'2026-01-20',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-01',condutor:'VERIFICAR'},
-    {item:'12',data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'12A',data_infracao:'2026-01-26',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
-    {item:'13',data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'13A',data_infracao:'2026-01-27',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
-    {item:'14',data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'14A',data_infracao:'2026-02-02',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'BOLETO',vencimento:'2026-06-15',condutor:'VERIFICAR'},
-    {item:'15',data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'AVANÇAR SINAL VERMELHO',cidade:'SANTO ANDRÉ - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
-    {item:'15A',data_infracao:'2026-02-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'AVANÇAR SINAL VERMELHO',cidade:'SANTO ANDRÉ - SP',valor:0.0,doc:'BOLETO',vencimento:'2026-06-01',condutor:'MAYCON'},
-    {item:'16',data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'16A',data_infracao:'2026-02-10',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-06-24',condutor:'VERIFICAR'},
-    {item:'17',data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SÃO CAETANO DO SUL - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'17A',data_infracao:'2026-02-14',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SÃO CAETANO DO SUL - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-06-08',condutor:'VERIFICAR'},
-    {item:'18',data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'18A',data_infracao:'2026-02-16',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-03',condutor:'VERIFICAR'},
-    {item:'19',data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'19A',data_infracao:'2026-02-18',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'BOLETO',vencimento:'2026-06-29',condutor:'VERIFICAR'},
-    {item:'20',data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'20A',data_infracao:'2026-02-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-07-03',condutor:'VERIFICAR'},
-    {item:'21',data_infracao:'2026-03-09',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (16/10/25)',cidade:'MAUA - SP',valor:586.94,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'22',data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (13/10/25)',cidade:'SÃO CAETANO DO SUL - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'22A',data_infracao:'2026-03-16',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (13/10/25)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'BOLETO',vencimento:'2026-06-22',condutor:'VERIFICAR'},
-    {item:'23',data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:0.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'23A',data_infracao:'2026-03-25',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-05',condutor:'VERIFICAR'},
-    {item:'24',data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'24A',data_infracao:'2026-04-01',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'BOLETO',vencimento:'2026-08-12',condutor:'VERIFICAR'},
-    {item:'25',data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'25A',data_infracao:'2026-04-01',placa:'FCP9A22',modelo:'GOL',pontos:5,descricao:'ESTACIONAR EM VAGA DE IDOSO',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-07-24',condutor:'VERIFICAR'},
-    {item:'26',data_infracao:'2026-04-07',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO IDENTIFICAÇÃO DE CONDUTOR (12/01/26)',cidade:'PINDAMONHANGABA - SP',valor:390.46,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
-    {item:'27',data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:5,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'27A',data_infracao:'2026-04-07',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'ESTACIONAR S/ CARTÃO DE ZONA AZUL',cidade:'SANTO ANDRÉ - SP',valor:195.23,doc:'BOLETO',vencimento:'2026-07-24',condutor:'VERIFICAR'},
-    {item:'28',data_infracao:'2026-04-27',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/11/25)',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
-    {item:'28A',data_infracao:'2026-04-27',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/11/25)',cidade:'SANTO ANDRÉ - SP',valor:260.32,doc:'BOLETO',vencimento:'2026-07-29',condutor:'MAYCON'},
-    {item:'29',data_infracao:'2026-04-28',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
-    {item:'30',data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'MIRACATU- SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
-    {item:'30A',data_infracao:'2026-05-02',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'MIRACATU- SP',valor:260.32,doc:'BOLETO',vencimento:null,condutor:'ROGÉRIO'},
-    {item:'31',data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (04/02/26)',cidade:'SANTO ANDRÉ - SP',valor:586.94,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
-    {item:'32',data_infracao:'2026-05-04',placa:'FQJ5E94',modelo:'AMAROK',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (16/10/25)',cidade:'MAUA - SP',valor:586.94,doc:'BOLETO',vencimento:'2026-06-23',condutor:'VERIFICAR'},
-    {item:'33',data_infracao:'2026-05-10',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'ROBEIRÃO PRETO - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'34',data_infracao:'2026-05-12',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'35',data_infracao:'2026-05-12',placa:'EYM3A94',modelo:'MASTER',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'36',data_infracao:'2026-05-15',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'MAUA - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'37',data_infracao:'2026-05-15',placa:'SWJ9J25',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'MAUA - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'38',data_infracao:'2026-05-18',placa:'FQJ5E94',modelo:'AMAROK',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'CARAPICUIBA - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'39',data_infracao:'2026-05-19',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'40',data_infracao:'2026-05-20',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (31/12/25)',cidade:'SANTO ANDRÉ - SP',valor:390.46,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'ROGÉRIO'},
-    {item:'41',data_infracao:'2026-05-20',placa:'FQE3D43',modelo:'OROCH',pontos:7,descricao:'TRANSITAR EM FAIXA EXCLUSIVA DE ONIBUS',cidade:'SÃO PAULO - SP',valor:293.47,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'42',data_infracao:'2026-05-25',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (21/12/25)',cidade:'SANTO ANDRÉ - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'43',data_infracao:'2026-05-26',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'44',data_infracao:'2026-06-01',placa:'SVC3I13',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (12/01/26)',cidade:'PINDAMONHANGABA - SP',valor:390.46,doc:'BOLETO',vencimento:'2026-07-13',condutor:'ROGÉRIO'},
-    {item:'45',data_infracao:'2026-06-02',placa:'FQE3D43',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM HORÁRIO DE RODÍZIO',cidade:'SÃO PAULO - SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'46',data_infracao:'2026-06-08',placa:'DQG9038',modelo:'PALIO',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO B. DO CAMPO -SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'47',data_infracao:'2026-06-09',placa:'EXJ1B06',modelo:'KA',pontos:4,descricao:'TRANSITAR C/ LAMPADAS QUEIMADAS',cidade:'SANTO ANDRÉ - SP',valor:131.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'48',data_infracao:'2026-06-24',placa:'FCP9A22',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (01/04/2026)',cidade:'SANTO ANDRÉ - SP',valor:null,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'49',data_infracao:'2026-06-29',placa:'GKH4I27',modelo:'GOL',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (07/04/2026)',cidade:'SANTO ANDRÉ - SP',valor:390.0,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'VERIFICAR'},
-    {item:'50',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (26/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
-    {item:'51',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (27/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
-    {item:'52',data_infracao:'2026-06-05',placa:'FQE3D43',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (30/12/2025)',cidade:'SÃO CAETANO DO SUL - SP',valor:260.32,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MARCOS'},
-    {item:'53',data_infracao:'2026-05-04',placa:'SWJ9J25',modelo:'OROCH',pontos:0,descricao:'NÃO INDICAÇÃO DE CONDUTOR (30/12/2025)',cidade:'SANTO ANDRÉ - SP',valor:586.94,doc:'BOLETO',vencimento:'2026-08-13',condutor:'MAYCON'},
-    {item:'54',data_infracao:'2026-05-16',placa:'UFJ8D74',modelo:'OROCH',pontos:4,descricao:'TRANSITAR EM VELOCIDADE ACIMA PERMITIDA',cidade:'SÃO LOURENÇO DA SERRA- SP',valor:130.16,doc:'NOTIFICAÇÃO',vencimento:null,condutor:'MAYCON'},
-  ];
+  // A lista da planilha agora vive em MULTAS_PLANILHA (escopo global),
+  // para que a sincronização manual use exatamente os mesmos 74 lançamentos.
+
 
 
   const manutSeed=[
@@ -5371,56 +5775,21 @@ async function seedPlanilhaData(){
   ];
 
 
-  // find vehicle id by placa
-  function veicByPlaca(placa){
-    return cache.veiculos.find(v=>v.placa&&v.placa.toUpperCase()===placa.toUpperCase());
-  }
-
-  // Insere tolerando colunas ainda inexistentes no banco. Campos novos vindos
-  // da planilha (item, rmv, nf) podem não existir se a migração não foi rodada:
-  // em vez de perder o registro inteiro, removemos apenas a coluna que faltou e
-  // tentamos de novo, acumulando o que foi descartado para avisar no final.
-  const colunasIgnoradas=new Set();
-  async function inserirTolerante(tabela, payload){
-    let corpo={...payload};
-    for(let tentativa=0;tentativa<6;tentativa++){
-      try{ return await sbPost(tabela,corpo); }
-      catch(e){
-        const col=detectarColunaFaltante(e.message);
-        if(col&&temPropriaChave(corpo,col)){ delete corpo[col]; colunasIgnoradas.add(`${tabela}.${col}`); continue; }
-        throw e;
-      }
-    }
-    throw new Error('Colunas ausentes demais em '+tabela);
-  }
+  // veicByPlaca, inserirTolerante e payloadMultaPlanilha agora são globais
+  // (definidos acima), porque a sincronização manual usa exatamente os mesmos.
 
   let multasOk=0,manutOk=0;
-  for(const m of multasSeed){
-    try{
-      const v=veicByPlaca(m.placa);
-      const payload={
-        item:m.item,                          // numeração da planilha (6 / 6A)
-        data_infracao:m.data_infracao,
-        placa:m.placa,
-        veiculo_id:v?v.id:null,
-        modelo_veiculo:m.modelo,
-        pontos:m.pontos||0,
-        descricao_infracao:m.descricao,
-        local_infracao:m.cidade,              // coluna CIDADE da planilha
-        valor:m.valor,
-        tipo_documento:m.doc,                 // NOTIFICAÇÃO (tipo 6) / BOLETO (tipo 6A)
-        vencimento_pagamento:m.vencimento,     // coluna DATA PAGTO — ver nota no cabeçalho
-        condutor_responsavel:m.condutor,      // CONDUTOR RESPONSÁVEL ("VERIFICAR" = a apurar)
-        status:'pendente'
-      };
-      const res=await inserirTolerante('multas',payload);
-      if(!cache.multas)cache.multas=[];
-      cache.multas.unshift(normIds(Array.isArray(res)?res[0]:{...payload,id:uid()}));
-      multasOk++;
-    }catch(e){console.warn('Multa seed err:',e.message)}
+  if(importarMultas){
+    const rMultas=await gravarMultasPlanilha(MULTAS_PLANILHA);
+    multasOk=rMultas.gravadas;
+    if(rMultas.falhas.length){
+      // Não é mais um aviso mudo no console: a reconciliação que roda logo
+      // depois identifica exatamente estes itens e tenta gravá-los de novo.
+      console.warn('Multas recusadas na importação inicial:',rMultas.falhas);
+    }
   }
 
-  for(const m of manutSeed){
+  if(importarManut)for(const m of manutSeed){
     try{
       const v=veicByPlaca(m.placa);
       const custo=(Number(m.custo_preventiva)||0)+(Number(m.custo_corretiva)||0);
@@ -5445,10 +5814,16 @@ async function seedPlanilhaData(){
       cache.manutencoes.unshift(normIds(Array.isArray(res)?res[0]:{...payload,id:uid()}));
       manutOk++;
     }catch(e){console.warn('Manut seed err:',e.message)}
+
   }
 
   // Conferência automática planilha x sistema (exigida pelo processo da Realtec).
-  conferirImportacao(multasOk,manutOk,multasSeed,manutSeed,colunasIgnoradas);
+  conferirImportacao({
+    multasOk,manutOk,
+    multasEsperadas:importarMultas?MULTAS_PLANILHA:null,
+    manutEsperadas:importarManut?manutSeed:null,
+    colunasIgnoradas:COLUNAS_IGNORADAS
+  });
   renderAll();
 }
 
@@ -5458,35 +5833,65 @@ async function seedPlanilhaData(){
 // Compara quantidade de registros, somatório de valores e de pontos entre o
 // que a planilha traz e o que foi efetivamente gravado. Qualquer divergência
 // é mostrada ao usuário — a importação nunca é declarada "OK" no escuro.
+//
+// Agora recebe um objeto e aceita `null` nas listas esperadas: quando só as
+// manutenções foram importadas (porque a tabela de multas já tinha dados), não
+// faz sentido acusar "0 de 74 multas". O que faltar em multas é responsabilidade
+// de sincronizarMultasPlanilha(), que roda em seguida e conhece o estado real.
 // ══════════════════════════════════════════
-function conferirImportacao(multasOk,manutOk,multasSeed,manutSeed,colunasIgnoradas){
-  const soma=(arr,f)=>arr.reduce((s,x)=>s+(Number(f(x))||0),0);
+function conferirImportacao(r){
+  const soma=(arr,f)=>(arr||[]).reduce((s,x)=>s+(Number(f(x))||0),0);
   const arred=v=>Math.round(v*100)/100;
-  const esperado={
-    multas:multasSeed.length,
-    manut:manutSeed.length,
-    valorMultas:arred(soma(multasSeed,m=>m.valor)),
-    pontos:soma(multasSeed,m=>m.pontos),
-    preventiva:arred(soma(manutSeed,m=>m.custo_preventiva)),
-    corretiva:arred(soma(manutSeed,m=>m.custo_corretiva))
-  };
-  const gravado={
-    multas:multasOk,
-    manut:manutOk,
-    valorMultas:arred(soma(cache.multas||[],m=>m.valor)),
-    pontos:soma(cache.multas||[],m=>m.pontos),
-    preventiva:arred(soma(cache.manutencoes||[],m=>m.custo_preventiva)),
-    corretiva:arred(soma(cache.manutencoes||[],m=>m.custo_corretiva))
-  };
-  const divergencias=Object.keys(esperado).filter(k=>esperado[k]!==gravado[k]);
-  console.table({planilha:esperado,sistema:gravado});
-  if(colunasIgnoradas.size){
-    toast(`Importado, mas ${colunasIgnoradas.size} campo(s) não existem no banco: ${[...colunasIgnoradas].join(', ')}. Rode a migração para não perder esses dados.`,'warning');
+  const divergencias=[];
+  const comparativo={};
+
+  if(r.multasEsperadas){
+    const esperado={
+      registros:r.multasEsperadas.length,
+      valor:arred(soma(r.multasEsperadas,m=>m.valor)),
+      pontos:soma(r.multasEsperadas,m=>m.pontos)
+    };
+    const gravado={
+      registros:r.multasOk,
+      valor:arred(soma(cache.multas||[],m=>m.valor)),
+      pontos:soma(cache.multas||[],m=>m.pontos)
+    };
+    comparativo.multasPlanilha=esperado;
+    comparativo.multasSistema=gravado;
+    Object.keys(esperado).forEach(k=>{
+      if(esperado[k]!==gravado[k])divergencias.push(`multas.${k}`);
+    });
+  }
+
+  if(r.manutEsperadas){
+    const esperado={
+      registros:r.manutEsperadas.length,
+      preventiva:arred(soma(r.manutEsperadas,m=>m.custo_preventiva)),
+      corretiva:arred(soma(r.manutEsperadas,m=>m.custo_corretiva))
+    };
+    const gravado={
+      registros:r.manutOk,
+      preventiva:arred(soma(cache.manutencoes||[],m=>m.custo_preventiva)),
+      corretiva:arred(soma(cache.manutencoes||[],m=>m.custo_corretiva))
+    };
+    comparativo.manutPlanilha=esperado;
+    comparativo.manutSistema=gravado;
+    Object.keys(esperado).forEach(k=>{
+      if(esperado[k]!==gravado[k])divergencias.push(`manutencoes.${k}`);
+    });
+  }
+
+  console.table(comparativo);
+  if(r.colunasIgnoradas&&r.colunasIgnoradas.size){
+    toast(`Importado, mas ${r.colunasIgnoradas.size} campo(s) não existem no banco: ${[...r.colunasIgnoradas].join(', ')}. Rode a migração para não perder esses dados.`,'warning');
   }
   if(divergencias.length){
-    toast(`⚠ Conferência: divergência em ${divergencias.join(', ')}. Veja o console para o comparativo.`,'error');
+    toast(`⚠ Conferência: divergência em ${divergencias.join(', ')}. Veja o console e use "Conferir planilha".`,'error');
   }else{
-    toast(`✅ Conferido: ${multasOk} multas (${fmt$(gravado.valorMultas)} / ${gravado.pontos} pts) e ${manutOk} manutenções — idêntico à planilha.`,'success');
+    const partes=[];
+    if(r.multasEsperadas)partes.push(`${r.multasOk} multas`);
+    if(r.manutEsperadas)partes.push(`${r.manutOk} manutenções`);
+    toast(`✅ Conferido: ${partes.join(' e ')} — idêntico à planilha.`,'success');
   }
 }
 
