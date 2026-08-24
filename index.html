@@ -1451,6 +1451,10 @@ button{touch-action:manipulation}
             <option value="boleto">Somente com boleto</option>
             <option value="sem_boleto">Notificações ainda sem boleto</option>
           </select>
+          <select id="mt-data-f" class="form-input" style="max-width:170px" onchange="renderMultas()" title="Escolhe a qual data o período abaixo se aplica">
+            <option value="infracao">Período: data da infração</option>
+            <option value="lancamento">Período: data do lançamento</option>
+          </select>
           <input id="mt-from" type="date" class="form-input" style="max-width:145px" onchange="renderMultas()"/>
           <input id="mt-to" type="date" class="form-input" style="max-width:145px" onchange="renderMultas()"/>
           <button class="btn btn-ghost btn-sm" onclick="limparFiltrosMulta()">Limpar</button>
@@ -1460,6 +1464,7 @@ button{touch-action:manipulation}
             <thead>
               <tr>
                 <th>Data Infração</th>
+                <th>Lançado em</th>
                 <th>Documento</th>
                 <th>Placa</th>
                 <th>Veículo</th>
@@ -1589,6 +1594,12 @@ button{touch-action:manipulation}
         <div class="form-note" style="color:var(--text-muted)">Mesma numeração da planilha. O sufixo “A” liga o boleto à notificação.</div>
       </div>
       <div class="form-group"><label class="form-label">Data da Infração *</label><input id="mu-data" type="date" class="form-input"/></div>
+      <!-- Data em que o lançamento foi feito no sistema (diferente da data da
+           infração). Vem preenchida com hoje, mas pode ser ajustada quando o
+           registro estiver sendo lançado com atraso. -->
+      <div class="form-group"><label class="form-label">Data do Lançamento *</label><input id="mu-datalanc" type="date" class="form-input"/>
+        <div class="form-note" style="color:var(--text-muted)">Quando a multa foi lançada no sistema. Aparece na tela e nos relatórios.</div>
+      </div>
       <div class="form-group"><label class="form-label">Veículo *</label><select id="mu-veic" class="form-input"><option value="">Selecione...</option></select></div>
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Condutor</label>
         <input id="mu-condutor" class="form-input" list="lista-condutores" placeholder="Digite ou selecione quem conduzia o veículo" autocomplete="off" onchange="vincularCondutorMotorista()"/>
@@ -1596,11 +1607,10 @@ button{touch-action:manipulation}
         <div class="form-note" style="color:var(--text-muted)">Deixe em branco (ou use “VERIFICAR”) enquanto a indicação não for apurada.</div>
       </div>
       <div class="form-group"><label class="form-label">Motorista cadastrado (vínculo opcional)</label><select id="mu-motor" class="form-input"><option value="">— Não identificado —</option></select></div>
-      <!-- OCULTO A PEDIDO DA REALTEC — não faz parte do processo operacional.
-           Possui dependências (renderMultas, genPDF, genExcel), por isso a
-           estrutura foi PRESERVADA: o campo continua no DOM e no banco, apenas
-           sai da interface. Basta remover o style="display:none" para reexibir. -->
-      <div class="form-group" id="grp-mu-tipo" style="display:none"><label class="form-label">Tipo de Infração</label>
+      <!-- REATIVADO A PEDIDO DA REALTEC — o campo de identificação do motivo da
+           infração voltou à interface (era usado por renderMultas/genPDF/genExcel
+           e continuava gravado no banco mesmo enquanto ficou oculto). -->
+      <div class="form-group" id="grp-mu-tipo"><label class="form-label">Motivo / Tipo de Infração</label>
         <select id="mu-tipo" class="form-input">
           <option value="">Selecione...</option>
           <option value="velocidade">Excesso de Velocidade</option>
@@ -1649,6 +1659,12 @@ button{touch-action:manipulation}
       <!-- OCULTO A PEDIDO DA REALTEC — dependências em genExcel e nas validações
            de coerência com o status; estrutura preservada. -->
       <div class="form-group" id="grp-mu-datapag" style="display:none"><label class="form-label">Data de Pagamento</label><input id="mu-datapag" type="date" class="form-input"/></div>
+      <!-- Identificação por extenso do motivo da infração — mesma informação da
+           coluna "DESCRIÇÃO DA INFRAÇÃO" da planilha MULTAS GERAL. -->
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">Descrição / Identificação do Motivo</label>
+        <input id="mu-desc" class="form-input" placeholder="Ex.: Transitar em velocidade superior à máxima permitida em até 20%"/>
+        <div class="form-note" style="color:var(--text-muted)">Texto que aparece na coluna “Infração” da tela e nos relatórios.</div>
+      </div>
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Local da Infração</label><input id="mu-local" class="form-input" placeholder="Endereço ou trecho onde ocorreu a infração"/></div>
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Observações / Recurso</label><textarea id="mu-obs" class="form-input" rows="2" placeholder="Detalhes adicionais, andamento do recurso..."></textarea></div>
       <div class="form-group" style="grid-column:1/-1">
@@ -4270,17 +4286,18 @@ function genPDF(type){
     const qtdNotif=rows.filter(ehNotificacaoMulta).length, qtdBol=rows.filter(ehBoletoMulta).length;
     doc.setFontSize(9);doc.setTextColor(30,58,92);
     doc.text(`Processos: ${grupos.length}  |  Notificacoes: ${qtdNotif}  |  Boletos: ${qtdBol}  |  Valor total: ${fmt$(totalGeral)}  |  Em aberto: ${fmt$(totalPend)}`,14,34);
-    doc.autoTable({startY:39,head:[['Item','Doc','Data','Placa','Condutor','Infração','Cidade','Pontos','Valor','Vencimento','Status','Anexo']],
+    doc.autoTable({startY:39,head:[['Item','Doc','Data','Lançamento','Placa','Condutor','Infração','Cidade','Pontos','Valor','Vencimento','Status','Anexo']],
       body:rows.map(m=>{
         const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
         const mot=cache.motoristas.find(x=>x.id===m.motorista_id);
         const descNorm=normalizaDescricaoInfracao(m.descricao_infracao);
         const tipoLabel=tipoMap[m.tipo_infracao]||m.tipo_infracao||descNorm||'Outros';
         const condutor=(mot&&mot.nome)||(condutorPendente(m)?'A INDICAR':m.condutor_responsavel)||'—';
-        return [rotuloEtapaMulta(m)||'-',ehBoletoMulta(m)?'Boleto':'Notificacao',fmtDate(m.data_infracao),veic?veic.placa:(m.placa||'—'),condutor,tipoLabel,m.local_infracao||'—',m.pontos||0,m.valor?fmt$(m.valor):'—',fmtDate(m.vencimento_pagamento),m.status||'—',m.anexo_url?'Sim':'Não'];
+        const lanc=dataLancamentoMulta(m);
+        return [rotuloEtapaMulta(m)||'-',ehBoletoMulta(m)?'Boleto':'Notificacao',fmtDate(m.data_infracao),lanc?fmtDate(lanc):'—',veic?veic.placa:(m.placa||'—'),condutor,tipoLabel,m.local_infracao||'—',m.pontos||0,m.valor?fmt$(m.valor):'—',fmtDate(m.vencimento_pagamento),m.status||'—',m.anexo_url?'Sim':'Não'];
       }),
       styles:{fontSize:7,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]},
-      columnStyles:{5:{cellWidth:42},6:{cellWidth:30}}
+      columnStyles:{6:{cellWidth:40},7:{cellWidth:28}}
     });
   }else if(type==='os'){
     // O card "Ordem de Serviço" da tela de Relatórios chamava genPDF('os'),
@@ -4325,7 +4342,8 @@ function genExcel(type){
     const descNorm=normalizaDescricaoInfracao(mu.descricao_infracao);
     // Colunas espelham a aba "MULTAS GERAL" da planilha da Realtec, acrescidas
     // do tipo de documento (6 / 6A) e do status controlado pelo sistema.
-    return {ITEM:mu.item||'—','DATA INFRAÇÃO':fmtDate(mu.data_infracao),PONTOS:mu.pontos||0,
+    const lanc=dataLancamentoMulta(mu);
+    return {ITEM:mu.item||'—','DATA INFRAÇÃO':fmtDate(mu.data_infracao),'DATA LANÇAMENTO':lanc?fmtDate(lanc):'—',PONTOS:mu.pontos||0,
       'DESCRIÇÃO DA INFRAÇÃO':descNorm||tipoMapXls[mu.tipo_infracao]||'—',CIDADE:mu.local_infracao||'—',
       PLACA:v?v.placa:(mu.placa||'—'),'MODELO VEÍCULO':v?v.modelo:(mu.modelo_veiculo||'—'),VALOR:mu.valor||0,
       DOC:ehBoletoMulta(mu)?'BOLETO':'NOTIFICAÇÃO',VENCIMENTO:fmtDate(mu.vencimento_pagamento),
@@ -4572,6 +4590,16 @@ function atualizaBotaoAnexo(tabela,temAnexo){
   if(btn)btn.style.display=temAnexo?'':'none';
 }
 
+// Data em que a multa foi lançada no sistema. Registros antigos (importados da
+// planilha ou salvos antes deste campo existir) não têm data_lancamento: nesse
+// caso usamos o created_at do banco, para que o relatório nunca fique em branco.
+function dataLancamentoMulta(m){
+  if(!m)return '';
+  if(m.data_lancamento)return String(m.data_lancamento).slice(0,10);
+  if(m.created_at)return String(m.created_at).slice(0,10);
+  return '';
+}
+
 function renderMultas(){
   const q=(document.getElementById('mt-search')?.value||'').toLowerCase();
   const st=document.getElementById('mt-status-f')?.value||'';
@@ -4591,7 +4619,8 @@ function renderMultas(){
     const matchS=!st||m.status===st;
     // Filtro da regra 6 / 6A
     const matchD=!doc||(doc==='boleto'?ehBoletoMulta(m):doc==='notificacao'?ehNotificacaoMulta(m):notificacaoSemBoleto(m,processos));
-    const d=m.data_infracao||'';
+    const baseData=(document.getElementById('mt-data-f')?.value||'infracao');
+    const d=(baseData==='lancamento'?dataLancamentoMulta(m):m.data_infracao)||'';
     const matchF=!fr||d>=fr;
     const matchT=!to||d<=to;
     return matchQ&&matchS&&matchD&&matchF&&matchT;
@@ -4628,7 +4657,7 @@ function renderMultas(){
     }
   }
   // Table
-  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="13">Nenhuma multa registrada</td></tr>';return}
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="14">Nenhuma multa registrada</td></tr>';return}
   const stMap={pendente:'badge-manutencao',paga:'badge-ativo',recurso:'badge-blue',cancelada:'badge-gray'};
   const tipoMap={velocidade:'Velocidade',sinal:'Sinal',estacionamento:'Estacionamento',documentacao:'Documentação',alcool:'Alcoolemia',celular:'Celular',cinto:'Cinto',conversao:'Conversão',contramao:'Contramão',ultrapassagem:'Ultrapassagem',faixa_onibus:'Faixa de Ônibus',rodizio:'Rodízio',pedagio:'Pedágio',zona_azul:'Zona Azul',nao_indicacao_condutor:'Não Indicação de Condutor',carga:'Carga',outros:'Outros'};
   tb.innerHTML=rows.map(m=>{
@@ -4647,6 +4676,7 @@ function renderMultas(){
     const condutor=(mot&&mot.nome)||(m.condutor_responsavel&&!condutorPendente(m)?m.condutor_responsavel:'');
     return `<tr>
       <td>${fmtDate(m.data_infracao)}</td>
+      <td style="font-size:.75rem;color:var(--text-secondary)" title="Data em que o lançamento foi registrado no sistema">${dataLancamentoMulta(m)?fmtDate(dataLancamentoMulta(m)):'<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="white-space:nowrap">
         <span class="badge ${boleto?'badge-multa-pend':'badge-blue'}" title="${boleto?'Multa já convertida, com boleto emitido':'Notificação de autuação, ainda sem boleto'}">${boleto?'Boleto':'Notif.'}</span>
         ${numItem?`<span style="font-size:.68rem;color:var(--text-muted);margin-left:5px" title="Item nº ${h(numItem)} da planilha">nº ${h(numItem)}</span>`:''}
@@ -4687,6 +4717,9 @@ function converterEmBoleto(id){
         id:null,
         item:base?base+'A':'',
         tipo_documento:'BOLETO',
+        // O boleto é um lançamento NOVO: a data de lançamento é a de hoje,
+        // não a da notificação que o originou.
+        data_lancamento:today(),
         valor:'',
         vencimento_pagamento:'',
         anexo_url:null,
@@ -4704,6 +4737,7 @@ function converterEmBoleto(id){
 function limparFiltrosMulta(){
   ['mt-search','mt-from','mt-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   ['mt-status-f','mt-doc-f'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  const dtF=document.getElementById('mt-data-f');if(dtF)dtF.value='infracao';
   renderMultas();
 }
 
@@ -4711,11 +4745,14 @@ let multaEditId=null;
 function openMultaModal(m=null){
   multaEditId=null;
   document.getElementById('m-multa-title').textContent='Nova Multa / Infração';
-  ['mu-id','mu-auto','mu-orgao','mu-local','mu-obs','mu-item','mu-condutor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  ['mu-id','mu-auto','mu-orgao','mu-local','mu-obs','mu-item','mu-condutor','mu-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('mu-doc').value='NOTIFICAÇÃO';
   preencherListaCondutores();
   atualizaBotaoAnexo('multas',false);
   document.getElementById('mu-data').value=today();
+  // Lançamento novo: assume hoje. Em edição, o valor real é reposto abaixo.
+  const elLanc=document.getElementById('mu-datalanc');
+  if(elLanc)elLanc.value=today();
   document.getElementById('mu-tipo').value='';
   document.getElementById('mu-pontos').value='3';
   document.getElementById('mu-status').value='pendente';
@@ -4737,6 +4774,10 @@ function openMultaModal(m=null){
     multaEditId=m.id;
     document.getElementById('m-multa-title').textContent='Editar Multa / Infração';
     document.getElementById('mu-data').value=m.data_infracao||'';
+    const lancEdit=document.getElementById('mu-datalanc');
+    if(lancEdit)lancEdit.value=dataLancamentoMulta(m)||today();
+    const descEdit=document.getElementById('mu-desc');
+    if(descEdit)descEdit.value=m.descricao_infracao||'';
     document.getElementById('mu-veic').value=m.veiculo_id||'';
     document.getElementById('mu-motor').value=m.motorista_id||'';
     document.getElementById('mu-tipo').value=m.tipo_infracao||'';
@@ -4772,6 +4813,8 @@ async function saveMulta(){
   const tipo=document.getElementById('mu-tipo').value;
   const valor=document.getElementById('mu-valor').value;
   const dataInfr=document.getElementById('mu-data').value;
+  const dataLanc=(document.getElementById('mu-datalanc')?.value)||today();
+  const descInfr=(document.getElementById('mu-desc')?.value||'').trim();
   const venc=document.getElementById('mu-venc').value;
   const dataPag=document.getElementById('mu-datapag').value;
   const statusMu=document.getElementById('mu-status').value;
@@ -4789,6 +4832,8 @@ async function saveMulta(){
     [!ehInteiroEntre(pontosMu,0,10),'Pontos na CNH devem estar entre 0 e 10.'],
     [!ehDataValida(dataInfr),'Data da infração inválida.'],
     [ehDataFutura(dataInfr),'A data da infração não pode estar no futuro.'],
+    [!ehDataValida(dataLanc),'Data do lançamento inválida.'],
+    [ehDataFutura(dataLanc),'A data do lançamento não pode estar no futuro.'],
     [!ehDataValida(venc),'Data de vencimento inválida.'],
     [venc&&dataInfr&&diasEntre(dataInfr,venc)<0,'O vencimento não pode ser anterior à data da infração.'],
     [!ehDataValida(dataPag),'Data de pagamento inválida.'],
@@ -4824,6 +4869,8 @@ async function saveMulta(){
     tipo_documento:docMu,
     condutor_responsavel:condutorMu||null,
     data_infracao:document.getElementById('mu-data').value||null,
+    data_lancamento:dataLanc||today(),
+    descricao_infracao:descInfr||null,
     veiculo_id:veicId,
     motorista_id:document.getElementById('mu-motor').value||null,
     tipo_infracao:tipo,
@@ -4861,18 +4908,33 @@ async function saveMulta(){
     const colunaFaltante=detectarColunaFaltante(e.message);
     if(colunaFaltante&&temPropriaChave(data,colunaFaltante)){
       try{
+        // Podem faltar VÁRIAS colunas no banco (ex.: data_lancamento e
+        // descricao_infracao em projetos ainda não migrados). Por isso o retry
+        // agora é em cadeia: remove uma coluna por vez até o banco aceitar,
+        // em vez de desistir na segunda coluna ausente.
         const dataSemColuna={...data};
-        delete dataSemColuna[colunaFaltante];
-        if(multaEditId){
-          await sbPatch('multas',multaEditId,dataSemColuna);
-          const idx=cache.multas.findIndex(x=>x.id==multaEditId);
-          if(idx>=0)cache.multas[idx]=normIds({...cache.multas[idx],...dataSemColuna});
-        }else{
-          const res=await sbPost('multas',dataSemColuna);
-          cache.multas.unshift(normIds(Array.isArray(res)?res[0]:{...dataSemColuna,id:uid()}));
+        const removidas=[];
+        delete dataSemColuna[colunaFaltante];removidas.push(colunaFaltante);
+        const gravar=async()=>{
+          if(multaEditId){
+            await sbPatch('multas',multaEditId,dataSemColuna);
+            const idx=cache.multas.findIndex(x=>x.id==multaEditId);
+            if(idx>=0)cache.multas[idx]=normIds({...cache.multas[idx],...dataSemColuna});
+          }else{
+            const res=await sbPost('multas',dataSemColuna);
+            cache.multas.unshift(normIds(Array.isArray(res)?res[0]:{...dataSemColuna,id:uid()}));
+          }
+        };
+        for(let tentativa=0;tentativa<6;tentativa++){
+          try{ await gravar(); break; }
+          catch(err){
+            const outra=detectarColunaFaltante(err.message);
+            if(outra&&temPropriaChave(dataSemColuna,outra)){delete dataSemColuna[outra];removidas.push(outra);continue}
+            throw err;
+          }
         }
         closeMultaModal();renderMultas();updBadge();renderDash();
-        toast(`Salvo, mas o campo "${colunaFaltante}" não foi gravado: rode a migração no banco para habilitar esse campo.`,'warning');
+        toast(`Salvo, mas ${removidas.length>1?'os campos':'o campo'} "${removidas.join('", "')}" não ${removidas.length>1?'foram gravados':'foi gravado'}: rode a migração no banco para habilitar.`,'warning');
       }catch(e2){
         console.error('saveMulta (retry) error:',e2);
         toast('Erro ao salvar multa: '+e2.message,'error');
@@ -5360,6 +5422,8 @@ function payloadMultaPlanilha(m){
     tipo_documento:m.doc,                 // NOTIFICAÇÃO / BOLETO
     vencimento_pagamento:m.vencimento,    // coluna DATA PAGTO
     condutor_responsavel:m.condutor,      // "VERIFICAR" = condutor a apurar
+    // Importação também registra QUANDO o lançamento entrou no sistema.
+    data_lancamento:today(),
     status:'pendente'
   };
 }
