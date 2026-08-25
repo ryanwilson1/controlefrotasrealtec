@@ -721,6 +721,33 @@ textarea.form-input{resize:vertical;min-height:68px}
   .kpi-value{font-size:1.6rem}
 }
 
+/* ══════════════════════════════════════════
+   RANKING DE MULTAS DA FROTA
+   Usa as MESMAS variáveis, cards e tabelas do restante do sistema.
+   Só acrescenta o destaque de pódio e o selo de criticidade.
+   ══════════════════════════════════════════ */
+.rank-row{cursor:pointer;transition:background .15s ease}
+.rank-row:hover{background:#eaf3fd}
+.rank-pos{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.05rem;white-space:nowrap}
+.rank-1 td{background:linear-gradient(90deg,rgba(255,193,7,.18),transparent)}
+.rank-2 td{background:linear-gradient(90deg,rgba(144,164,174,.20),transparent)}
+.rank-3 td{background:linear-gradient(90deg,rgba(205,127,50,.16),transparent)}
+.rank-1 .rank-pos{color:#b28704}
+.rank-2 .rank-pos{color:#607d8b}
+.rank-3 .rank-pos{color:#a15c19}
+.badge-crit{background:rgba(244,67,54,.12);color:#c62828;border:1px solid rgba(244,67,54,.3)}
+.badge-aten{background:rgba(255,152,0,.12);color:#e65100;border:1px solid rgba(255,152,0,.3)}
+.badge-reg{background:rgba(0,200,83,.10);color:#2e7d32;border:1px solid rgba(0,200,83,.25)}
+.rank-num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rank-empty{color:var(--text-muted);padding:26px 12px;text-align:center}
+.rank-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--text-muted);margin-top:9px}
+#rk-detalhe-lista{max-height:46vh;overflow:auto}
+@media(max-width:600px){
+  .rank-pos{font-size:.95rem}
+  .rank-legenda{gap:8px;font-size:.63rem}
+  #rk-detalhe-lista{max-height:52vh}
+}
+
 /* ── OVERLAY for mobile menu ── */
 #sidebar-overlay{display:none;position:fixed;inset:0;z-index:18;background:rgba(2,8,20,.6)}
 #sidebar-overlay.show{display:block}
@@ -1045,6 +1072,10 @@ button{touch-action:manipulation}
       <div class="nav-link" data-section="reports" onclick="nav('reports')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         <span class="nav-label">PDF & Excel</span>
+      </div>
+      <div class="nav-link" data-section="rankmultas" onclick="nav('rankmultas')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 11h14l-1 10H6L5 11z"/></svg>
+        <span class="nav-label">Ranking de Multas</span>
       </div>
     </div>
 
@@ -1552,6 +1583,10 @@ button{touch-action:manipulation}
           <div class="page-title">Relatórios & Exportações</div>
           <div class="page-subtitle">Gere relatórios em PDF ou planilhas Excel</div>
         </div>
+        <div style="margin-bottom:7px;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700">Relatórios Gerenciais</div>
+        <div class="grid-3 report-grid" style="margin-bottom:22px">
+          <div class="report-card" onclick="nav('rankmultas')"><div class="report-icon">🏆</div><div class="report-title">Ranking de Multas da Frota</div><div class="report-desc">Análise consolidada das multas, pontuações e valores por veículo.</div><button class="btn btn-primary btn-sm">Abrir relatório</button></div>
+        </div>
         <div style="margin-bottom:7px;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700">Relatórios PDF</div>
         <div class="grid-3 report-grid" style="margin-bottom:22px">
           <div class="report-card" onclick="genPDF('os')"><div class="report-icon">📋</div><div class="report-title">Ordens de Serviço</div><div class="report-desc">Listagem consolidada de todas as OS</div><button class="btn btn-primary btn-sm">Gerar PDF</button></div>
@@ -1570,9 +1605,161 @@ button{touch-action:manipulation}
         </div>
       </div>
 
+      <!-- ══ RANKING DE MULTAS DA FROTA ══
+           Camada 100% de LEITURA sobre cache.multas. Não grava, não edita e
+           não exclui nada. Reaproveita os helpers de processo (notificação x
+           boleto) já usados por renderMultas/genPDF/genExcel. -->
+      <div id="s-rankmultas" class="section">
+        <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div>
+            <div class="page-title">Ranking de Multas da Frota</div>
+            <div class="page-subtitle">Análise consolidada das multas, pontuações e valores por veículo.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="gerarPDFRankingMultas()">Gerar Relatório PDF</button>
+            <button class="btn btn-success btn-sm" onclick="gerarExcelRankingMultas()">Exportar Excel</button>
+          </div>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="search-bar">
+          <select id="rk-base-data" class="form-input" style="max-width:200px" onchange="renderRankingMultas()" title="Escolhe a qual data o período abaixo se aplica">
+            <option value="infracao">Período: data da infração</option>
+            <option value="lancamento">Período: data do lançamento</option>
+          </select>
+          <input id="rk-from" type="date" class="form-input" style="max-width:145px" onchange="renderRankingMultas()" title="Data inicial"/>
+          <input id="rk-to" type="date" class="form-input" style="max-width:145px" onchange="renderRankingMultas()" title="Data final"/>
+          <select id="rk-veic" class="form-input" style="max-width:210px" onchange="renderRankingMultas()">
+            <option value="">Todos os veículos</option>
+          </select>
+          <input id="rk-placa" class="form-input" style="max-width:170px" placeholder="🔍  Pesquisar placa..." oninput="renderDebounced('rankmultas')"/>
+          <select id="rk-tipo" class="form-input" style="max-width:210px" onchange="renderRankingMultas()">
+            <option value="">Todos os tipos de infração</option>
+          </select>
+          <select id="rk-status" class="form-input" style="max-width:160px" onchange="renderRankingMultas()">
+            <option value="">Todas as situações</option>
+            <option value="pendente">Pendente</option>
+            <option value="paga">Paga</option>
+            <option value="recurso">Em Recurso</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <select id="rk-ordem" class="form-input" style="max-width:215px" onchange="renderRankingMultas()">
+            <option value="qtd_desc">Maior quantidade de multas</option>
+            <option value="pts_desc">Maior pontuação</option>
+            <option value="val_desc">Maior valor total</option>
+            <option value="qtd_asc">Menor quantidade de multas</option>
+            <option value="val_asc">Menor valor total</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--text-secondary);cursor:pointer;white-space:nowrap">
+            <input id="rk-sem-multas" type="checkbox" onchange="renderRankingMultas()" style="cursor:pointer"/>
+            Mostrar veículos sem multas
+          </label>
+          <button class="btn btn-ghost btn-sm" onclick="limparFiltrosRanking()">Limpar</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid" style="margin-bottom:18px">
+          <div class="kpi">
+            <div class="kpi-label" style="color:#ef9a9a">Total de Multas</div>
+            <div class="kpi-value" id="rk-k-total" style="color:#ef9a9a">0</div>
+            <div class="kpi-sub" id="rk-k-total-sub">Processos no filtro</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label" style="color:#ef9a9a">Valor Total</div>
+            <div class="kpi-value" id="rk-k-valor" style="color:#ef9a9a;font-size:1.5rem">R$ 0</div>
+            <div class="kpi-sub">Somatório das multas</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,#f44336,transparent)"></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label" style="color:var(--warning)">Pontuação Total</div>
+            <div class="kpi-value" id="rk-k-pontos" style="color:var(--warning)">0</div>
+            <div class="kpi-sub">Pontos acumulados na frota</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,var(--warning),transparent)"></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label" style="color:#1558a8">Veículos com Multas</div>
+            <div class="kpi-value" id="rk-k-veics" style="color:#1558a8">0</div>
+            <div class="kpi-sub" id="rk-k-veics-sub">Distintos no filtro</div>
+            <div class="kpi-accent-line" style="background:linear-gradient(90deg,#1a6bbf,transparent)"></div>
+          </div>
+        </div>
+
+        <!-- RANKING -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">Ranking por Veículo <span style="margin-left:auto;font-weight:600;color:var(--text-muted);font-size:.62rem;text-transform:none;letter-spacing:0">Clique na linha para ver o detalhamento</span></div>
+          <div class="tbl-wrap tbl-scroll">
+            <table class="dtbl">
+              <thead>
+                <tr>
+                  <th>Posição</th><th>Veículo</th><th>Placa</th>
+                  <th style="text-align:right">Nº Multas</th>
+                  <th style="text-align:right">Pontos</th>
+                  <th style="text-align:right">Valor Total</th>
+                  <th>Classificação</th>
+                </tr>
+              </thead>
+              <tbody id="rk-ranking-body"></tbody>
+            </table>
+          </div>
+          <div class="rank-legenda">
+            <span><span class="badge badge-crit">🔴 Crítico</span> ≥ 20 pts (limite da CNH) · ou ≥ 5 multas · ou valor ≥ 2× a média da frota</span>
+            <span><span class="badge badge-aten">🟠 Atenção</span> ≥ 10 pts · ou ≥ 3 multas · ou valor ≥ a média</span>
+            <span><span class="badge badge-reg">🟢 Regular</span> abaixo desses limites</span>
+          </div>
+        </div>
+
+        <!-- GRÁFICOS -->
+        <div class="grid-2" style="margin-bottom:14px">
+          <div class="chart-card">
+            <div class="card-title">Multas por Veículo</div>
+            <canvas id="ch-rank-qtd" height="190"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="card-title">Valor Total das Multas por Veículo</div>
+            <canvas id="ch-rank-valor" height="190"></canvas>
+          </div>
+        </div>
+
+        <!-- INFRAÇÕES MAIS FREQUENTES -->
+        <div class="card">
+          <div class="card-title">Infrações Mais Frequentes</div>
+          <div class="tbl-wrap tbl-scroll">
+            <table class="dtbl">
+              <thead>
+                <tr>
+                  <th>Posição</th><th>Infração</th>
+                  <th style="text-align:right">Ocorrências</th>
+                  <th style="text-align:right">Pontos</th>
+                  <th style="text-align:right">Valor Total</th>
+                </tr>
+              </thead>
+              <tbody id="rk-infracoes-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
+
+<!-- ══ DETALHAMENTO DO VEÍCULO (RANKING DE MULTAS) ══
+     Somente leitura: nenhum botão altera, edita ou exclui registros. -->
+<div id="m-rank-detalhe" class="modal-bg">
+  <div class="modal" style="width:840px;max-width:97vw">
+    <div class="modal-header">
+      <div class="modal-title">Detalhamento da Frota</div>
+      <button class="modal-close" onclick="fecharDetalheRanking()">✕</button>
+    </div>
+    <div id="rk-detalhe-head"></div>
+    <div id="rk-detalhe-lista" class="tbl-wrap tbl-scroll" style="margin-top:14px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="fecharDetalheRanking()">Fechar</button>
+      <button class="btn btn-primary btn-sm" onclick="gerarPDFDetalheVeiculo()">Gerar PDF do veículo</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MULTA MODAL ══ -->
 <div id="m-multa" class="modal-bg">
@@ -2482,7 +2669,7 @@ let _rDbc = {};
 function renderDebounced(nome){
   if(!_rDbc[nome]){
     const map={veiculos:'renderVeiculos',abast:'renderAbast',manut:'renderManut',
-      multas:'renderMultas',os:'renderOS'};
+      multas:'renderMultas',os:'renderOS',rankmultas:'renderRankingMultas'};
     const fnName=map[nome];
     if(!fnName||typeof window[fnName]!=='function')return;
     _rDbc[nome]=debounce(()=>window[fnName](), 250);
@@ -2799,13 +2986,14 @@ const sectionMeta={
   dashboard:'Dashboard',alerts:'Alertas da Frota',veiculos:'Veículos',
   abastecimentos:'Abastecimentos',manutencoes:'Manutenções',checklist:'Checklist Diário',
   viagens:'Viagens / KM',motoristas:'Motoristas',obras:'Obras / Projetos',
-  multas:'Multas / Infrações',ordemservico:'Ordem de Serviço',reports:'Relatórios'
+  multas:'Multas / Infrações',ordemservico:'Ordem de Serviço',reports:'Relatórios',
+  rankmultas:'Ranking de Multas da Frota'
 };
 const renders={
   dashboard:renderDash,alerts:renderAlerts,veiculos:renderVeiculos,
   abastecimentos:renderAbast,manutencoes:renderManut,checklist:renderCheck,
   viagens:renderViagens,motoristas:renderMotoristas,obras:renderObras,
-  multas:renderMultas,ordemservico:renderOS
+  multas:renderMultas,ordemservico:renderOS,rankmultas:renderRankingMultas
 };
 
 // Renderiza todas as telas com dados (usado após seed em massa e imports).
@@ -4739,6 +4927,536 @@ function limparFiltrosMulta(){
   ['mt-status-f','mt-doc-f'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   const dtF=document.getElementById('mt-data-f');if(dtF)dtF.value='infracao';
   renderMultas();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// RANKING DE MULTAS DA FROTA — relatório gerencial (SOMENTE LEITURA)
+// ──────────────────────────────────────────────────────────────────────────
+// Fonte de dados: cache.multas — exatamente a MESMA lista usada por
+// renderMultas / genPDF('multas') / genExcel('multas'). Nenhuma base nova,
+// nenhuma gravação, nenhum PATCH/DELETE. Todo o processamento acontece sobre
+// estruturas novas montadas a partir do cache; os objetos originais nunca são
+// mutados (só lidos).
+//
+// REGRA 6 / 6A REAPROVEITADA: a notificação e o boleto da MESMA infração são
+// um único processo. O ranking conta PROCESSOS, não lançamentos — senão um
+// veículo subiria no ranking só por já ter recebido o boleto. Reutilizamos
+// agruparProcessosMulta / valorProcessoMulta, que já implementam essa regra.
+// ══════════════════════════════════════════════════════════════════════════
+
+// Rótulos de tipo de infração — mesma tabela usada na tela e nas exportações.
+const RK_TIPO_LABEL={velocidade:'Excesso de Velocidade',sinal:'Avanço de Sinal',estacionamento:'Estacionamento Irregular',documentacao:'Documentação / Licença',alcool:'Alcoolemia',celular:'Uso de Celular ao Volante',cinto:'Falta de Cinto',conversao:'Conversão Proibida',contramao:'Contramão',ultrapassagem:'Ultrapassagem Indevida',faixa_onibus:'Faixa Exclusiva de Ônibus',rodizio:'Rodízio Municipal',pedagio:'Evasão de Pedágio',zona_azul:'Zona Azul Irregular',nao_indicacao_condutor:'Não Indicação de Condutor',carga:'Excesso de Carga',outros:'Outros'};
+
+// Conversão numérica tolerante: aceita number, "1.234,56", "R$ 1.234,56",
+// "1234.56", vazio, null e lixo. Nunca devolve NaN — um registro incompleto
+// não pode zerar/quebrar o relatório inteiro.
+function rkNum(v){
+  if(v==null||v==='')return 0;
+  if(typeof v==='number')return isFinite(v)?v:0;
+  let s=String(v).trim().replace(/[R$\s]/gi,'');
+  if(!s)return 0;
+  if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');
+  else s=s.replace(/,/g,'');
+  const n=Number(s);
+  return isFinite(n)?n:0;
+}
+// Data usada pelo filtro de período, conforme a base escolhida.
+function rkDataDaMulta(m,base){
+  const d=(base==='lancamento'?dataLancamentoMulta(m):m.data_infracao)||'';
+  const s=String(d).slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:'';
+}
+// Pontos do PROCESSO: o boleto prevalece sobre a notificação (mesma lógica de
+// valorProcessoMulta). Se nenhuma etapa informar pontos, o maior valor vale.
+function rkPontosProcesso(registros){
+  const boleto=(registros||[]).find(m=>ehBoletoMulta(m)&&rkNum(m.pontos)>0);
+  if(boleto)return rkNum(boleto.pontos);
+  return Math.max(0,...(registros||[]).map(m=>rkNum(m.pontos)),0);
+}
+// Valor do PROCESSO. A regra oficial continua sendo valorProcessoMulta() — o
+// boleto prevalece sobre a notificação. O fallback só entra quando aquela
+// função devolve 0: ela usa Number(), que vira NaN->0 em registros antigos com
+// o valor gravado como texto de moeda ("R$ 1.234,56"). Assim a regra de
+// negócio não é duplicada e o relatório não zera dados legítimos.
+function rkValorProcesso(registros){
+  const oficial=valorProcessoMulta(registros);
+  if(oficial>0)return oficial;
+  const boleto=(registros||[]).find(m=>ehBoletoMulta(m)&&rkNum(m.valor)>0);
+  if(boleto)return rkNum(boleto.valor);
+  return Math.max(0,...(registros||[]).map(m=>rkNum(m.valor)),0);
+}
+// Registro representativo do processo (boleto quando existir).
+function rkRegistroBase(registros){
+  return (registros||[]).find(ehBoletoMulta)||(registros||[])[0]||{};
+}
+// Nome legível da infração, com a mesma prioridade usada em genPDF/genExcel.
+function rkNomeInfracao(m){
+  const desc=normalizaDescricaoInfracao(m&&m.descricao_infracao);
+  if(desc&&String(desc).trim())return String(desc).trim();
+  if(m&&m.tipo_infracao)return RK_TIPO_LABEL[m.tipo_infracao]||String(m.tipo_infracao);
+  return 'Não informada';
+}
+// Situação consolidada do processo, seguindo a mesma hierarquia da tela:
+// pendente manda (processoEmAberto), depois paga, recurso e cancelada.
+function rkSituacaoProcesso(registros){
+  if(processoEmAberto(registros))return 'pendente';
+  if((registros||[]).some(m=>m.status==='paga'))return 'paga';
+  if((registros||[]).some(m=>m.status==='recurso'))return 'recurso';
+  if((registros||[]).some(m=>m.status==='cancelada'))return 'cancelada';
+  return (registros&&registros[0]&&registros[0].status)||'—';
+}
+
+// ── Leitura dos filtros da tela ──
+function rkFiltros(){
+  const g=id=>document.getElementById(id);
+  return {
+    base:(g('rk-base-data')?.value)||'infracao',
+    from:(g('rk-from')?.value)||'',
+    to:(g('rk-to')?.value)||'',
+    veic:(g('rk-veic')?.value)||'',
+    placa:normalizaPlaca(g('rk-placa')?.value||''),
+    tipo:(g('rk-tipo')?.value)||'',
+    status:(g('rk-status')?.value)||'',
+    semMultas:!!(g('rk-sem-multas')?.checked)
+  };
+}
+function limparFiltrosRanking(){
+  ['rk-from','rk-to','rk-placa'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  ['rk-veic','rk-tipo','rk-status'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  const b=document.getElementById('rk-base-data');if(b)b.value='infracao';
+  const o=document.getElementById('rk-ordem');if(o)o.value='qtd_desc';
+  const s=document.getElementById('rk-sem-multas');if(s)s.checked=false;
+  renderRankingMultas();
+}
+// Popula os selects de veículo e de tipo de infração a partir dos dados reais.
+// Preserva a seleção atual para não perder o filtro ao recarregar a tela.
+function rkPopularSelects(){
+  const selV=document.getElementById('rk-veic');
+  if(selV){
+    const atual=selV.value;
+    selV.innerHTML='<option value="">Todos os veículos</option>'+
+      (cache.veiculos||[]).slice()
+        .sort((a,b)=>String(a.placa||'').localeCompare(String(b.placa||''),'pt-BR'))
+        .map(v=>`<option value="${idAttr(v.id)}">${h(v.placa||'—')} — ${h(v.modelo||'')}</option>`).join('');
+    if(atual&&selV.querySelector(`option[value="${CSS.escape(atual)}"]`))selV.value=atual;
+  }
+  const selT=document.getElementById('rk-tipo');
+  if(selT){
+    const atual=selT.value;
+    const nomes=new Set();
+    (cache.multas||[]).forEach(m=>nomes.add(rkNomeInfracao(m)));
+    selT.innerHTML='<option value="">Todos os tipos de infração</option>'+
+      [...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR'))
+        .map(n=>`<option value="${h(n)}">${h(n)}</option>`).join('');
+    if(atual&&selT.querySelector(`option[value="${CSS.escape(atual)}"]`))selT.value=atual;
+  }
+}
+
+// ══════════════════════════════════════════
+// AGREGAÇÃO — passagem única sobre os dados
+// ══════════════════════════════════════════
+let _rankState=null; // último resultado calculado (usado pelo detalhamento e exportações)
+
+function calcularRankingMultas(){
+  const f=rkFiltros();
+  // Índice placa -> veículo, montado UMA vez (evita find() dentro de loop).
+  const idxPlaca=new Map();
+  (cache.veiculos||[]).forEach(v=>{
+    const p=normalizaPlaca(v.placa||'');
+    if(p&&!idxPlaca.has(p))idxPlaca.set(p,v);
+  });
+  const idxId=new Map();
+  (cache.veiculos||[]).forEach(v=>idxId.set(String(v.id),v));
+
+  // 1) Filtra os LANÇAMENTOS. Nenhum objeto é modificado — só referenciado.
+  const filtradas=(cache.multas||[]).filter(m=>{
+    if(!m)return false;
+    if(f.status&&m.status!==f.status)return false;
+    if(f.tipo&&rkNomeInfracao(m)!==f.tipo)return false;
+    const d=rkDataDaMulta(m,f.base);
+    if(f.from&&(!d||d<f.from))return false;
+    if(f.to&&(!d||d>f.to))return false;
+    const v=(m.veiculo_id!=null&&m.veiculo_id!==''?idxId.get(String(m.veiculo_id)):null)
+            ||(m.placa?idxPlaca.get(normalizaPlaca(m.placa)):null);
+    if(f.veic&&String(v?v.id:'')!==String(f.veic))return false;
+    if(f.placa){
+      const p=normalizaPlaca((v&&v.placa)||m.placa||'');
+      if(!p.includes(f.placa))return false;
+    }
+    return true;
+  });
+
+  // 2) Agrupa por veículo (id quando vinculado, senão placa em texto).
+  const porVeiculo=new Map();
+  const chaveVeic=(v,m)=>v?('V:'+v.id):(normalizaPlaca(m.placa||'')?('P:'+normalizaPlaca(m.placa)):'S:');
+  filtradas.forEach(m=>{
+    const v=(m.veiculo_id!=null&&m.veiculo_id!==''?idxId.get(String(m.veiculo_id)):null)
+            ||(m.placa?idxPlaca.get(normalizaPlaca(m.placa)):null);
+    const k=chaveVeic(v,m);
+    let bucket=porVeiculo.get(k);
+    if(!bucket){
+      bucket={chave:k,veiculoId:v?v.id:null,
+        placa:(v&&v.placa)||m.placa||'—',
+        modelo:(v&&v.modelo)||m.modelo_veiculo||'Veículo não cadastrado',
+        registros:[]};
+      porVeiculo.set(k,bucket);
+    }
+    bucket.registros.push(m);
+  });
+
+  // 3) Consolida cada veículo em processos e calcula os totais.
+  //    A contagem de infrações mais frequentes é alimentada no mesmo loop,
+  //    para não percorrer a base uma segunda vez.
+  const mapaInfracoes=new Map();
+  const veiculos=[];
+  porVeiculo.forEach(b=>{
+    const grupos=[...agruparProcessosMulta(b.registros).values()];
+    let pontos=0,valor=0,primeira='',ultima='';
+    const situacoes=new Map();
+    const detalhes=grupos.map(g=>{
+      const base=rkRegistroBase(g);
+      const pts=rkPontosProcesso(g);
+      const val=rkValorProcesso(g);
+      const sit=rkSituacaoProcesso(g);
+      const dataInf=String(base.data_infracao||'').slice(0,10);
+      pontos+=pts;valor+=val;
+      situacoes.set(sit,(situacoes.get(sit)||0)+1);
+      if(dataInf){
+        if(!primeira||dataInf<primeira)primeira=dataInf;
+        if(!ultima||dataInf>ultima)ultima=dataInf;
+      }
+      // acumula por tipo de infração (nível frota)
+      const nome=rkNomeInfracao(base);
+      let inf=mapaInfracoes.get(nome);
+      if(!inf){inf={nome,ocorrencias:0,pontos:0,valor:0};mapaInfracoes.set(nome,inf)}
+      inf.ocorrencias++;inf.pontos+=pts;inf.valor+=val;
+      return {data:dataInf,infracao:nome,pontos:pts,valor:val,situacao:sit,
+        etapa:ehBoletoMulta(base)?'Boleto':'Notificação',item:rotuloEtapaMulta(base),
+        local:base.local_infracao||'',vencimento:base.vencimento_pagamento||''};
+    }).sort((a,b2)=>String(b2.data).localeCompare(String(a.data)));
+
+    veiculos.push({chave:b.chave,veiculoId:b.veiculoId,placa:b.placa,modelo:b.modelo,
+      qtd:grupos.length,pontos,valor,primeira,ultima,detalhes,
+      lancamentos:b.registros.length,
+      situacoes:[...situacoes.entries()].map(([k,n])=>`${k} (${n})`).join(', ')||'—'});
+  });
+
+  const comMultas=veiculos.length;
+  const totalMultas=veiculos.reduce((s,v)=>s+v.qtd,0);
+  const totalValor=veiculos.reduce((s,v)=>s+v.valor,0);
+  const totalPontos=veiculos.reduce((s,v)=>s+v.pontos,0);
+  const totalLanc=veiculos.reduce((s,v)=>s+v.lancamentos,0);
+
+  // 4) Veículos sem multas (opcional). Tecnicamente suportado: a frota está em
+  //    cache.veiculos e a relação com a multa é veiculo_id (ou a placa em
+  //    texto), então basta subtrair o conjunto já ranqueado.
+  if(f.semMultas){
+    const jaTem=new Set(veiculos.map(v=>v.chave));
+    (cache.veiculos||[]).forEach(v=>{
+      if(f.veic&&String(v.id)!==String(f.veic))return;
+      if(f.placa&&!normalizaPlaca(v.placa||'').includes(f.placa))return;
+      if(jaTem.has('V:'+v.id))return;
+      veiculos.push({chave:'V:'+v.id,veiculoId:v.id,placa:v.placa||'—',modelo:v.modelo||'—',
+        qtd:0,pontos:0,valor:0,primeira:'',ultima:'',detalhes:[],lancamentos:0,situacoes:'—'});
+    });
+  }
+
+  // 5) Classificação de criticidade — regra fixa, documentada na tela:
+  //    · CRÍTICO : >= 20 pontos (limite da CNH no CTB) OU >= 5 multas
+  //                OU valor >= 2x a média por veículo da frota filtrada;
+  //    · ATENÇÃO : >= 10 pontos OU >= 3 multas OU valor >= a média;
+  //    · REGULAR : abaixo disso.
+  //    Metade absoluta (pontos/qtd) + metade relativa (valor) evita tanto o
+  //    critério arbitrário quanto o efeito de uma frota inteira "regular".
+  const mediaValor=comMultas?totalValor/comMultas:0;
+  veiculos.forEach(v=>{
+    if(v.qtd===0){v.nivel='regular';return}
+    if(v.pontos>=20||v.qtd>=5||(mediaValor>0&&v.valor>=mediaValor*2))v.nivel='critico';
+    else if(v.pontos>=10||v.qtd>=3||(mediaValor>0&&v.valor>=mediaValor))v.nivel='atencao';
+    else v.nivel='regular';
+  });
+
+  // 6) Ordenação
+  const ordem=(document.getElementById('rk-ordem')?.value)||'qtd_desc';
+  const cmp={
+    qtd_desc:(a,b)=>b.qtd-a.qtd||b.pontos-a.pontos||b.valor-a.valor,
+    pts_desc:(a,b)=>b.pontos-a.pontos||b.qtd-a.qtd||b.valor-a.valor,
+    val_desc:(a,b)=>b.valor-a.valor||b.qtd-a.qtd||b.pontos-a.pontos,
+    qtd_asc:(a,b)=>a.qtd-b.qtd||a.valor-b.valor||a.pontos-b.pontos,
+    val_asc:(a,b)=>a.valor-b.valor||a.qtd-b.qtd||a.pontos-b.pontos
+  }[ordem]||((a,b)=>b.qtd-a.qtd);
+  veiculos.sort((a,b)=>cmp(a,b)||String(a.placa).localeCompare(String(b.placa),'pt-BR'));
+
+  const infracoes=[...mapaInfracoes.values()]
+    .sort((a,b)=>b.ocorrencias-a.ocorrencias||b.valor-a.valor||a.nome.localeCompare(b.nome,'pt-BR'));
+
+  return {filtros:f,veiculos,infracoes,mediaValor,
+    kpis:{totalMultas,totalValor,totalPontos,comMultas,totalLanc}};
+}
+
+// ══════════════════════════════════════════
+// RENDERIZAÇÃO
+// ══════════════════════════════════════════
+const RK_NIVEL={critico:{cls:'badge-crit',txt:'🔴 Crítico'},atencao:{cls:'badge-aten',txt:'🟠 Atenção'},regular:{cls:'badge-reg',txt:'🟢 Regular'}};
+const RK_MEDALHA={1:'🥇',2:'🥈',3:'🥉'};
+
+function renderRankingMultas(){
+  const corpo=document.getElementById('rk-ranking-body');
+  if(!corpo)return; // seção ainda não existe no DOM — nada a fazer
+  rkPopularSelects();
+  let r;
+  try{ r=calcularRankingMultas(); }
+  catch(e){
+    console.warn('renderRankingMultas:',e);
+    corpo.innerHTML='<tr class="empty-row"><td colspan="7" class="rank-empty">Não foi possível calcular o ranking.</td></tr>';
+    return;
+  }
+  _rankState=r;
+
+  // KPIs
+  const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt};
+  set('rk-k-total',r.kpis.totalMultas);
+  set('rk-k-total-sub',`${r.kpis.totalLanc} lançamentos (notificação + boleto)`);
+  set('rk-k-valor',fmt$(r.kpis.totalValor));
+  set('rk-k-pontos',r.kpis.totalPontos);
+  set('rk-k-veics',r.kpis.comMultas);
+  set('rk-k-veics-sub',`de ${(cache.veiculos||[]).length} veículos cadastrados`);
+
+  // Ranking
+  if(!r.veiculos.length){
+    corpo.innerHTML='<tr class="empty-row"><td colspan="7" class="rank-empty">Nenhuma multa encontrada para os filtros aplicados.</td></tr>';
+  }else{
+    corpo.innerHTML=r.veiculos.map((v,i)=>{
+      const pos=i+1;
+      const medalha=v.qtd>0?RK_MEDALHA[pos]:'';
+      const cls=v.qtd>0&&pos<=3?` rank-${pos}`:'';
+      const n=RK_NIVEL[v.nivel]||RK_NIVEL.regular;
+      return `<tr class="rank-row${cls}" onclick="abrirDetalheRanking('${hAttr(v.chave)}')" title="Ver detalhamento de ${h(v.placa)}">
+        <td class="rank-pos">${medalha?medalha+' ':''}${pos}º</td>
+        <td>${h(v.modelo)}</td>
+        <td><strong style="color:var(--text-primary)">${h(v.placa)}</strong></td>
+        <td class="rank-num">${v.qtd}</td>
+        <td class="rank-num">${v.pontos} pts</td>
+        <td class="rank-num"><strong>${fmt$(v.valor)}</strong></td>
+        <td><span class="badge ${n.cls}">${n.txt}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Infrações mais frequentes
+  const ib=document.getElementById('rk-infracoes-body');
+  if(ib){
+    ib.innerHTML=r.infracoes.length
+      ? r.infracoes.map((inf,i)=>`<tr>
+          <td class="rank-pos">${i+1}º</td>
+          <td>${h(inf.nome)}</td>
+          <td class="rank-num">${inf.ocorrencias}</td>
+          <td class="rank-num">${inf.pontos} pts</td>
+          <td class="rank-num"><strong>${fmt$(inf.valor)}</strong></td>
+        </tr>`).join('')
+      : '<tr class="empty-row"><td colspan="5" class="rank-empty">Nenhuma infração no período filtrado.</td></tr>';
+  }
+
+  rkRenderGraficos(r);
+}
+
+// Gráficos — Chart.js já carregado no sistema. Sempre destruímos a instância
+// anterior (destroyChart) antes de recriar, senão o canvas acumula listeners.
+function rkRenderGraficos(r){
+  if(typeof Chart==='undefined')return;
+  destroyChart('rankQtd');destroyChart('rankValor');
+  const dados=r.veiculos.filter(v=>v.qtd>0);
+  const topQtd=dados.slice().sort((a,b)=>b.qtd-a.qtd).slice(0,12);
+  const topVal=dados.slice().sort((a,b)=>b.valor-a.valor).slice(0,12);
+  // Muitos veículos (ou tela estreita) => barras horizontais, que mantêm os
+  // rótulos de placa legíveis.
+  const horizontal=topQtd.length>8||window.innerWidth<720;
+  const opts=extra=>({
+    ...chartDefaults,
+    indexAxis:horizontal?'y':'x',
+    maintainAspectRatio:false,
+    plugins:{legend:{display:false},...(extra&&extra.plugins||{})},
+    ...(extra&&extra.rest||{})
+  });
+  const c1=document.getElementById('ch-rank-qtd');
+  if(c1&&topQtd.length){
+    charts['rankQtd']=new Chart(c1,{type:'bar',
+      data:{labels:topQtd.map(v=>v.placa),
+        datasets:[{label:'Multas',data:topQtd.map(v=>v.qtd),
+          backgroundColor:'rgba(244,67,54,.6)',borderColor:'rgba(244,67,54,.95)',borderWidth:1}]},
+      options:opts()});
+  }
+  const c2=document.getElementById('ch-rank-valor');
+  if(c2&&topVal.length){
+    charts['rankValor']=new Chart(c2,{type:'bar',
+      data:{labels:topVal.map(v=>v.placa),
+        datasets:[{label:'Valor (R$)',data:topVal.map(v=>Number(v.valor.toFixed(2))),
+          backgroundColor:'rgba(33,150,243,.6)',borderColor:'rgba(33,150,243,.95)',borderWidth:1}]},
+      options:opts({plugins:{tooltip:{callbacks:{label:ctx=>fmt$(ctx.parsed[horizontal?'x':'y'])}}}})});
+  }
+}
+
+// ══════════════════════════════════════════
+// DETALHAMENTO POR VEÍCULO (somente leitura)
+// ══════════════════════════════════════════
+let _rankVeicSel=null;
+function abrirDetalheRanking(chave){
+  if(!_rankState)return;
+  const v=_rankState.veiculos.find(x=>x.chave===chave);
+  if(!v){toast('Veículo não encontrado no ranking.','error');return}
+  _rankVeicSel=v;
+  const n=RK_NIVEL[v.nivel]||RK_NIVEL.regular;
+  const head=document.getElementById('rk-detalhe-head');
+  if(head){
+    head.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;color:#0d1f3c">${h(v.modelo)}</div>
+          <div style="font-size:.8rem;color:var(--text-secondary)">Placa: <strong>${h(v.placa)}</strong></div>
+        </div>
+        <span class="badge ${n.cls}">${n.txt}</span>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:6px;gap:10px">
+        <div class="kpi" style="padding:12px"><div class="kpi-label" style="color:#ef9a9a">Total de Multas</div><div class="kpi-value" style="font-size:1.6rem;color:#ef9a9a">${v.qtd}</div></div>
+        <div class="kpi" style="padding:12px"><div class="kpi-label" style="color:var(--warning)">Pontuação</div><div class="kpi-value" style="font-size:1.6rem;color:var(--warning)">${v.pontos}</div></div>
+        <div class="kpi" style="padding:12px"><div class="kpi-label" style="color:#1558a8">Valor Total</div><div class="kpi-value" style="font-size:1.15rem;color:#1558a8">${fmt$(v.valor)}</div></div>
+      </div>
+      <div class="detail-row"><span class="detail-label">Primeira ocorrência</span><span class="detail-value">${v.primeira?fmtDate(v.primeira):'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Última ocorrência</span><span class="detail-value">${v.ultima?fmtDate(v.ultima):'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Situação das multas</span><span class="detail-value">${h(v.situacoes)}</span></div>`;
+  }
+  const lista=document.getElementById('rk-detalhe-lista');
+  if(lista){
+    const stMap={pendente:'badge-manutencao',paga:'badge-ativo',recurso:'badge-blue',cancelada:'badge-gray'};
+    lista.innerHTML=v.detalhes.length
+      ? `<table class="dtbl"><thead><tr><th>Data</th><th>Infração</th><th style="text-align:right">Pontos</th><th style="text-align:right">Valor</th><th>Situação</th></tr></thead>
+         <tbody>${v.detalhes.map(d=>`<tr>
+           <td>${d.data?fmtDate(d.data):'—'}</td>
+           <td>${h(d.infracao)}${d.item?` <span style="font-size:.66rem;color:var(--text-muted)">nº ${h(d.item)}</span>`:''}</td>
+           <td class="rank-num">${d.pontos}</td>
+           <td class="rank-num">${fmt$(d.valor)}</td>
+           <td><span class="badge ${stMap[d.situacao]||'badge-gray'}">${h(d.situacao)}</span></td>
+         </tr>`).join('')}</tbody></table>`
+      : '<div class="rank-empty">Nenhuma multa para este veículo no filtro atual.</div>';
+  }
+  document.getElementById('m-rank-detalhe').classList.add('open');
+}
+function fecharDetalheRanking(){
+  document.getElementById('m-rank-detalhe').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+// EXPORTAÇÕES — jsPDF/autoTable e XLSX já carregados no sistema
+// ══════════════════════════════════════════
+function rkPeriodoTexto(f){
+  if(!f.from&&!f.to)return 'Todo o período';
+  const base=f.base==='lancamento'?'lançamento':'infração';
+  return `${f.from?fmtDate(f.from):'início'} a ${f.to?fmtDate(f.to):'hoje'} (data de ${base})`;
+}
+function rkCabecalhoPDF(doc,subtitulo,f){
+  doc.setFontSize(15);doc.setTextColor(33,150,243);
+  doc.text('REALTEC ENGENHARIA',14,17);
+  doc.setFontSize(12);doc.setTextColor(30,58,92);
+  doc.text(subtitulo,14,25);
+  doc.setFontSize(9);doc.setTextColor(120,120,120);
+  doc.text(`Período analisado: ${rkPeriodoTexto(f)}`,14,32);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`,14,37);
+  doc.setDrawColor(33,150,243);doc.line(14,40,283,40);
+}
+const RK_ESTILO_TBL={styles:{fontSize:8,textColor:[30,58,92]},headStyles:{fillColor:[21,88,168],textColor:255},alternateRowStyles:{fillColor:[232,241,251]}};
+
+function gerarPDFRankingMultas(){
+  if(!window.jspdf||!window.jspdf.jsPDF){
+    toast('Biblioteca de PDF não carregou. Verifique a conexão e recarregue a página.','error');return;
+  }
+  const r=_rankState||calcularRankingMultas();
+  if(!r.veiculos.length){toast('Não há dados no filtro atual para gerar o PDF.','info');return}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape'});
+  rkCabecalhoPDF(doc,'Relatório Gerencial de Multas da Frota',r.filtros);
+  doc.setFontSize(9);doc.setTextColor(30,58,92);
+  doc.text(`Total de multas: ${r.kpis.totalMultas}   |   Valor total: ${fmt$(r.kpis.totalValor)}   |   Pontuação total: ${r.kpis.totalPontos}   |   Veículos com multas: ${r.kpis.comMultas}`,14,46);
+  const nivelTxt={critico:'CRITICO',atencao:'ATENCAO',regular:'REGULAR'};
+  doc.autoTable({startY:51,
+    head:[['Pos.','Veículo','Placa','Nº Multas','Pontos','Valor Total','Classificação']],
+    body:r.veiculos.map((v,i)=>[`${i+1}º`,v.modelo,v.placa,v.qtd,v.pontos,fmt$(v.valor),nivelTxt[v.nivel]||'—']),
+    ...RK_ESTILO_TBL,
+    columnStyles:{3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}
+  });
+  if(r.infracoes.length){
+    doc.addPage('landscape');
+    rkCabecalhoPDF(doc,'Infrações Mais Frequentes na Frota',r.filtros);
+    doc.autoTable({startY:46,
+      head:[['Pos.','Infração','Ocorrências','Pontos','Valor Total']],
+      body:r.infracoes.map((inf,i)=>[`${i+1}º`,inf.nome,inf.ocorrencias,inf.pontos,fmt$(inf.valor)]),
+      ...RK_ESTILO_TBL,
+      columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right'}}
+    });
+  }
+  doc.save(`realtec-ranking-multas-${Date.now()}.pdf`);
+  toast('PDF do Ranking de Multas gerado!','success');
+}
+
+// PDF do veículo aberto no detalhamento.
+function gerarPDFDetalheVeiculo(){
+  if(!_rankVeicSel){toast('Nenhum veículo selecionado.','info');return}
+  if(!window.jspdf||!window.jspdf.jsPDF){
+    toast('Biblioteca de PDF não carregou. Verifique a conexão e recarregue a página.','error');return;
+  }
+  const v=_rankVeicSel;
+  const f=(_rankState&&_rankState.filtros)||rkFiltros();
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape'});
+  rkCabecalhoPDF(doc,`Detalhamento de Multas — ${v.modelo} (${v.placa})`,f);
+  doc.setFontSize(9);doc.setTextColor(30,58,92);
+  doc.text(`Total: ${v.qtd} multas   |   Pontuação: ${v.pontos}   |   Valor: ${fmt$(v.valor)}   |   Primeira: ${v.primeira?fmtDate(v.primeira):'—'}   |   Última: ${v.ultima?fmtDate(v.ultima):'—'}`,14,46);
+  doc.autoTable({startY:51,
+    head:[['Data','Infração','Etapa','Pontos','Valor','Situação']],
+    body:(v.detalhes.length?v.detalhes:[{data:'',infracao:'Sem multas no filtro',etapa:'',pontos:0,valor:0,situacao:'—'}])
+      .map(d=>[d.data?fmtDate(d.data):'—',d.infracao,d.etapa||'—',d.pontos,fmt$(d.valor),d.situacao]),
+    ...RK_ESTILO_TBL,
+    columnStyles:{1:{cellWidth:80},3:{halign:'right'},4:{halign:'right'}}
+  });
+  doc.save(`realtec-multas-${normalizaPlaca(v.placa)||'veiculo'}-${Date.now()}.pdf`);
+  toast('PDF do veículo gerado!','success');
+}
+
+function gerarExcelRankingMultas(){
+  if(typeof XLSX==='undefined'){
+    toast('Biblioteca de Excel não carregou. Verifique a conexão e recarregue a página.','error');return;
+  }
+  const r=_rankState||calcularRankingMultas();
+  if(!r.veiculos.length){toast('Não há dados no filtro atual para exportar.','info');return}
+  const nivelTxt={critico:'CRÍTICO',atencao:'ATENÇÃO',regular:'REGULAR'};
+  try{
+    const wb=XLSX.utils.book_new();
+    // Aba 1 — Ranking
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(
+      r.veiculos.map((v,i)=>({Posição:i+1,Veículo:v.modelo,Placa:v.placa,
+        'Quantidade de multas':v.qtd,Pontuação:v.pontos,'Valor total':v.valor,
+        Classificação:nivelTxt[v.nivel]||'—'}))
+    ),'Ranking');
+    // Aba 2 — Infrações (lançamento a lançamento, respeitando os filtros)
+    const linhas=[];
+    r.veiculos.forEach(v=>v.detalhes.forEach(d=>linhas.push({
+      Data:d.data?fmtDate(d.data):'—',Veículo:v.modelo,Placa:v.placa,
+      Infração:d.infracao,Etapa:d.etapa,Pontos:d.pontos,Valor:d.valor,Situação:d.situacao
+    })));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(
+      linhas.length?linhas:[{Data:'—',Veículo:'—',Placa:'—',Infração:'Sem registros no filtro',Etapa:'—',Pontos:0,Valor:0,Situação:'—'}]
+    ),'Infrações');
+    // Aba 3 — Resumo por infração
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(
+      r.infracoes.length
+        ? r.infracoes.map(inf=>({Infração:inf.nome,Quantidade:inf.ocorrencias,Pontos:inf.pontos,'Valor total':inf.valor}))
+        : [{Infração:'Sem registros no filtro',Quantidade:0,Pontos:0,'Valor total':0}]
+    ),'Resumo por infração');
+    XLSX.writeFile(wb,`realtec-ranking-multas-${Date.now()}.xlsx`);
+    toast('Excel do Ranking exportado com sucesso!','success');
+  }catch(e){
+    console.error('gerarExcelRankingMultas:',e);
+    toast('Erro ao gerar a planilha: '+e.message,'error');
+  }
 }
 
 let multaEditId=null;
