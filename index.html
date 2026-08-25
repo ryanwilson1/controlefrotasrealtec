@@ -573,6 +573,13 @@ textarea.form-input{resize:vertical;min-height:68px}
 
 /* ── CHART ── */
 .chart-card{background:#ffffff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(26,107,191,.06)}
+/* Caixa de altura FIXA para gráficos com maintainAspectRatio:false.
+   Sem isso o Chart.js entra em laço de crescimento: ele define a altura do
+   canvas = altura do pai; como o pai tinha altura automática (conteúdo +
+   padding), a cada evento de resize o canvas ganhava mais alguns pixels,
+   até virar um gráfico gigantesco que travava a página inteira. */
+.chart-box{position:relative;width:100%;height:280px}
+.chart-box>canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important;display:block}
 
 /* ── REPORT CARDS ── */
 .report-card{
@@ -673,6 +680,7 @@ textarea.form-input{resize:vertical;min-height:68px}
   #main{margin-left:0!important}
   #mob-btn{display:flex!important}
   .chart-card{min-height:160px}
+  .chart-box{height:240px}
 }
 @media(max-width:768px){
   #bottom-nav{display:block}
@@ -693,6 +701,7 @@ textarea.form-input{resize:vertical;min-height:68px}
 @media(max-width:600px){
   .kpi-grid{grid-template-columns:1fr 1fr!important;gap:8px}
   .grid-2,.grid-3{grid-template-columns:1fr}
+  .chart-box{height:220px}
   #content{padding:12px 10px 90px}
   .form-grid-2,.form-grid-3{grid-template-columns:1fr}
   .modal{padding:16px}
@@ -1712,12 +1721,12 @@ button{touch-action:manipulation}
         <!-- GRÁFICOS -->
         <div class="grid-2" style="margin-bottom:14px">
           <div class="chart-card">
-            <div class="card-title">Multas por Veículo</div>
-            <canvas id="ch-rank-qtd" height="190"></canvas>
+            <div class="card-title">Multas por Veículo <span style="margin-left:auto;font-weight:600;color:var(--text-muted);font-size:.62rem;text-transform:none;letter-spacing:0">Top 8</span></div>
+            <div class="chart-box"><canvas id="ch-rank-qtd"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="card-title">Valor Total das Multas por Veículo</div>
-            <canvas id="ch-rank-valor" height="190"></canvas>
+            <div class="card-title">Valor Total das Multas por Veículo <span style="margin-left:auto;font-weight:600;color:var(--text-muted);font-size:.62rem;text-transform:none;letter-spacing:0">Top 8</span></div>
+            <div class="chart-box"><canvas id="ch-rank-valor"></canvas></div>
           </div>
         </div>
 
@@ -3049,6 +3058,10 @@ function nav(id){
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
   document.querySelectorAll(`.nav-link[data-section="${id}"]`).forEach(l=>l.classList.add('active'));
   document.getElementById('topbar-title').textContent=sectionMeta[id]||id;
+  // Saindo do Ranking, liberamos os gráficos: instâncias do Chart.js mantidas
+  // em seções ocultas continuam observando resize e consumindo memória, o que
+  // deixava as OUTRAS telas (Multas, principalmente) lentas para renderizar.
+  if(id!=='rankmultas'){destroyChart('rankQtd');destroyChart('rankValor')}
   if(renders[id])renders[id]();
   // A barra inferior (mobile) só era atualizada quando a própria barra era
   // clicada. Navegando pelo menu lateral ou por um card do Dashboard, ela
@@ -4788,6 +4801,8 @@ function dataLancamentoMulta(m){
   return '';
 }
 
+// Controla renderizações concorrentes da lista de multas (busca digitada rápido).
+let _multasRenderToken=0;
 function renderMultas(){
   const q=(document.getElementById('mt-search')?.value||'').toLowerCase();
   const st=document.getElementById('mt-status-f')?.value||'';
@@ -4795,9 +4810,16 @@ function renderMultas(){
   const to=document.getElementById('mt-to')?.value||'';
   const doc=document.getElementById('mt-doc-f')?.value||'';
   const processos=agruparProcessosMulta(cache.multas||[]);
+  // Índices por id. Antes fazíamos dois `.find()` lineares POR LINHA, tanto no
+  // filtro quanto na montagem do HTML — com a frota e o volume de multas atuais
+  // isso virava centenas de milhares de comparações a cada tecla digitada na
+  // busca, e era a razão de a lista demorar (ou parecer não carregar).
+  const veicById=new Map((cache.veiculos||[]).map(v=>[v.id,v]));
+  const motById=new Map((cache.motoristas||[]).map(x=>[x.id,x]));
+  const baseDataSel=(document.getElementById('mt-data-f')?.value||'infracao');
   let rows=(cache.multas||[]).filter(m=>{
-    const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
-    const mot=cache.motoristas.find(x=>x.id===m.motorista_id);
+    const veic=veicById.get(m.veiculo_id);
+    const mot=motById.get(m.motorista_id);
     // Multas importadas da planilha guardam a placa em texto (m.placa) mesmo
     // quando o veículo não foi vinculado. A busca precisa considerar as duas
     // origens, senão digitar a placa não encontrava o registro que a própria
@@ -4807,8 +4829,7 @@ function renderMultas(){
     const matchS=!st||m.status===st;
     // Filtro da regra 6 / 6A
     const matchD=!doc||(doc==='boleto'?ehBoletoMulta(m):doc==='notificacao'?ehNotificacaoMulta(m):notificacaoSemBoleto(m,processos));
-    const baseData=(document.getElementById('mt-data-f')?.value||'infracao');
-    const d=(baseData==='lancamento'?dataLancamentoMulta(m):m.data_infracao)||'';
+    const d=(baseDataSel==='lancamento'?dataLancamentoMulta(m):m.data_infracao)||'';
     const matchF=!fr||d>=fr;
     const matchT=!to||d<=to;
     return matchQ&&matchS&&matchD&&matchF&&matchT;
@@ -4845,12 +4866,16 @@ function renderMultas(){
     }
   }
   // Table
-  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="14">Nenhuma multa registrada</td></tr>';return}
+  if(!rows.length){
+    _multasRenderToken++; // cancela qualquer bloco pendente da busca anterior
+    tb.innerHTML='<tr class="empty-row"><td colspan="14">Nenhuma multa registrada</td></tr>';
+    return;
+  }
   const stMap={pendente:'badge-manutencao',paga:'badge-ativo',recurso:'badge-blue',cancelada:'badge-gray'};
   const tipoMap={velocidade:'Velocidade',sinal:'Sinal',estacionamento:'Estacionamento',documentacao:'Documentação',alcool:'Alcoolemia',celular:'Celular',cinto:'Cinto',conversao:'Conversão',contramao:'Contramão',ultrapassagem:'Ultrapassagem',faixa_onibus:'Faixa de Ônibus',rodizio:'Rodízio',pedagio:'Pedágio',zona_azul:'Zona Azul',nao_indicacao_condutor:'Não Indicação de Condutor',carga:'Carga',outros:'Outros'};
-  tb.innerHTML=rows.map(m=>{
-    const veic=cache.veiculos.find(v=>v.id===m.veiculo_id);
-    const mot=cache.motoristas.find(x=>x.id===m.motorista_id);
+  const linhaMulta=m=>{
+    const veic=veicById.get(m.veiculo_id);
+    const mot=motById.get(m.motorista_id);
     const venc=m.vencimento_pagamento;
     const isVencida=venc&&m.status==='pendente'&&dateSafe(venc)<new Date();
     const descNorm=normalizaDescricaoInfracao(m.descricao_infracao);
@@ -4885,7 +4910,29 @@ function renderMultas(){
         <button class="icon-btn d" onclick="delMulta('${idAttr(m.id)}')" title="Excluir">✕</button>
       </td>
     </tr>`;
-  }).join('');
+  };
+
+  // Renderização em blocos. Montar e injetar centenas de linhas de uma vez
+  // bloqueia a thread principal e o navegador chega a abortar a pintura — era
+  // o efeito de "a lista não carrega tudo". Aqui o primeiro bloco aparece
+  // imediatamente e o restante entra nos quadros seguintes, sempre até o fim.
+  const LOTE=120;
+  _multasRenderToken++;
+  const token=_multasRenderToken;
+  tb.innerHTML=rows.slice(0,LOTE).map(linhaMulta).join('');
+  if(rows.length>LOTE){
+    let i=LOTE;
+    const proximo=()=>{
+      // Um novo filtro/busca invalidou esta renderização: aborta sem sujar a tabela.
+      if(token!==_multasRenderToken)return;
+      const fatia=rows.slice(i,i+LOTE);
+      if(!fatia.length)return;
+      tb.insertAdjacentHTML('beforeend',fatia.map(linhaMulta).join(''));
+      i+=LOTE;
+      if(i<rows.length)requestAnimationFrame(proximo);
+    };
+    requestAnimationFrame(proximo);
+  }
 }
 
 // ── Evolução 6 → 6A ──
@@ -5262,19 +5309,45 @@ function renderRankingMultas(){
 
 // Gráficos — Chart.js já carregado no sistema. Sempre destruímos a instância
 // anterior (destroyChart) antes de recriar, senão o canvas acumula listeners.
+// Top N exibido nos gráficos. O ranking completo continua na TABELA acima —
+// o gráfico é só leitura rápida; plotar a frota inteira gerava dezenas de
+// barras ilegíveis e caras de desenhar a cada mudança de filtro.
+const RK_TOP_GRAFICO=8;
+let _rkGrafRaf=null;
+
 function rkRenderGraficos(r){
   if(typeof Chart==='undefined')return;
+  // Se a aba do Ranking não está visível, não adianta desenhar: o canvas teria
+  // dimensão 0 e o Chart.js ficaria brigando com o resize ao reexibir.
+  const sec=document.getElementById('s-rankmultas');
+  if(!sec||!sec.classList.contains('active')){
+    destroyChart('rankQtd');destroyChart('rankValor');
+    return;
+  }
+  // Coalescemos chamadas seguidas (o usuário mexendo em vários filtros) em um
+  // único desenho no próximo quadro.
+  if(_rkGrafRaf)cancelAnimationFrame(_rkGrafRaf);
+  _rkGrafRaf=requestAnimationFrame(()=>{_rkGrafRaf=null;rkDesenharGraficos(r)});
+}
+
+function rkDesenharGraficos(r){
   destroyChart('rankQtd');destroyChart('rankValor');
   const dados=r.veiculos.filter(v=>v.qtd>0);
-  const topQtd=dados.slice().sort((a,b)=>b.qtd-a.qtd).slice(0,12);
-  const topVal=dados.slice().sort((a,b)=>b.valor-a.valor).slice(0,12);
-  // Muitos veículos (ou tela estreita) => barras horizontais, que mantêm os
-  // rótulos de placa legíveis.
-  const horizontal=topQtd.length>8||window.innerWidth<720;
+  const topQtd=dados.slice().sort((a,b)=>b.qtd-a.qtd).slice(0,RK_TOP_GRAFICO);
+  const topVal=dados.slice().sort((a,b)=>b.valor-a.valor).slice(0,RK_TOP_GRAFICO);
+  // Barras horizontais quando há muitas placas ou a tela é estreita — os
+  // rótulos continuam legíveis dentro da altura fixa da .chart-box.
+  const horizontal=topQtd.length>6||window.innerWidth<720;
   const opts=extra=>({
     ...chartDefaults,
     indexAxis:horizontal?'y':'x',
-    maintainAspectRatio:false,
+    responsive:true,
+    maintainAspectRatio:false,   // altura vem da .chart-box (fixa em CSS)
+    animation:false,             // redesenho instantâneo a cada filtro
+    resizeDelay:150,             // agrupa eventos de resize
+    // Em telas de alta densidade o canvas era rasterizado em 2x/3x sem ganho
+    // real de leitura, custando memória e tempo de desenho.
+    devicePixelRatio:Math.min(window.devicePixelRatio||1,1.5),
     plugins:{legend:{display:false},...(extra&&extra.plugins||{})},
     ...(extra&&extra.rest||{})
   });
