@@ -5036,12 +5036,19 @@ function rkValorProcesso(registros){
 function rkRegistroBase(registros){
   return (registros||[]).find(ehBoletoMulta)||(registros||[])[0]||{};
 }
-// Nome legível da infração, com a mesma prioridade usada em genPDF/genExcel.
+// Nome legível da infração — vem SOMENTE do campo "Motivo / Tipo de Infração"
+// (tipo_infracao). O texto livre de "Descrição / Identificação do Motivo"
+// (descricao_infracao) NÃO é usado no ranking, pois gerava divergências.
 function rkNomeInfracao(m){
-  const desc=normalizaDescricaoInfracao(m&&m.descricao_infracao);
-  if(desc&&String(desc).trim())return String(desc).trim();
-  if(m&&m.tipo_infracao)return RK_TIPO_LABEL[m.tipo_infracao]||String(m.tipo_infracao);
+  const t=m&&m.tipo_infracao?String(m.tipo_infracao).trim():'';
+  if(t)return RK_TIPO_LABEL[t]||t;
   return 'Não informada';
+}
+// Para um processo (notificação 6 + boleto 6A), usa o primeiro lançamento
+// que tenha o tipo preenchido — assim o boleto sem tipo não vira "Não informada".
+function rkNomeInfracaoProcesso(registros,base){
+  const r=(registros||[]).find(x=>x&&x.tipo_infracao&&String(x.tipo_infracao).trim());
+  return rkNomeInfracao(r||base);
 }
 // Situação consolidada do processo, seguindo a mesma hierarquia da tela:
 // pendente manda (processoEmAberto), depois paga, recurso e cancelada.
@@ -5173,7 +5180,7 @@ function calcularRankingMultas(){
         if(!ultima||dataInf>ultima)ultima=dataInf;
       }
       // acumula por tipo de infração (nível frota)
-      const nome=rkNomeInfracao(base);
+      const nome=rkNomeInfracaoProcesso(g,base);
       let inf=mapaInfracoes.get(nome);
       if(!inf){inf={nome,ocorrencias:0,pontos:0,valor:0};mapaInfracoes.set(nome,inf)}
       inf.ocorrencias++;inf.pontos+=pts;inf.valor+=val;
